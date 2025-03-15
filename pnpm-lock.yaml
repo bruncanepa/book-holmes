@@ -26,6 +26,9 @@ importers:
       '@google-cloud/vision':
         specifier: ^4.0.2
         version: 4.3.3
+      '@google/generative-ai':
+        specifier: ^0.24.0
+        version: 0.24.0
       axios:
         specifier: ^1.6.5
         version: 1.8.3
@@ -498,6 +501,10 @@ packages:
   '@google-cloud/vision@4.3.3':
     resolution: {integrity: sha512-ZEGXlZ22ZXlCxorUOVTCOmwufQ7p48qz9NME3hwnxqFzSdfMXsGtxzXhlYanbuz505n/cjbTHWp/ORCzHfv4rg==}
     engines: {node: '>=14.0.0'}
+
+  '@google/generative-ai@0.24.0':
+    resolution: {integrity: sha512-fnEITCGEB7NdX0BhoYZ/cq/7WPZ1QS5IzJJfC3Tg/OwkvBetMiVJciyaan297OvE4B9Jg1xvo0zIazX/9sGu1Q==}
+    engines: {node: '>=18.0.0'}
 
   '@grpc/grpc-js@1.13.0':
     resolution: {integrity: sha512-pMuxInZjUnUkgMT2QLZclRqwk2ykJbIU05aZgPgJYXEpN9+2I7z7aNwcjWZSycRPl232FfhPszyBFJyOxTHNog==}
@@ -3705,6 +3712,8 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  '@google/generative-ai@0.24.0': {}
 
   '@grpc/grpc-js@1.13.0':
     dependencies:

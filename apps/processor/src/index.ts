@@ -7,10 +7,13 @@ import { z } from "zod";
 import axios from "axios";
 import fs from "fs";
 import { GoogleVision } from "./lib/googleVision";
+import { GoogleGemini } from "./lib/googleGemini";
+import { bookTitlePrompt } from "./prompts";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 const vision = new GoogleVision();
+const gemini = new GoogleGemini();
 
 app.use(cors());
 app.use(express.json());
@@ -107,18 +110,26 @@ async function detectBook(imageBuffer: Buffer): Promise<BookDetection> {
 
     // The first textAnnotation contains the full text detected in the image
     const fullText = textResult?.description;
-    console.log("Full text detected:\n", fullText);
 
     // Simple heuristic: Assume the first prominent text block is the title
-    const title = fullText?.replaceAll("\n", " ").trim();
-    if (!title) throw new Error("It's a book, but no title found in image");
-    data.title = title;
+    const possibleTitle = fullText
+      ?.replaceAll(/[^a-zA-Z0-9]/g, " ")
+      .replaceAll("\n", " ")
+      .trim();
+    console.log("Full text detected:\n", possibleTitle);
+    if (!possibleTitle)
+      throw new Error("It's a book, but no title found in image");
 
-    // Get book information and content
-    const { isFiction } = await getBookInfo(title);
+    const titleAi = await gemini
+      .chatCompletion(bookTitlePrompt, possibleTitle)
+      .catch(console.error);
+
+    data.title = titleAi || possibleTitle;
+
+    const { isFiction } = await getBookInfo(data.title);
     data.type = isFiction ? "fiction" : "non-fiction";
 
-    const pageContent = await getBookContent(title, isFiction);
+    const pageContent = await getBookContent(data.title, isFiction);
     data.text = pageContent;
   } catch (error) {
     data.error =
