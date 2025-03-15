@@ -10,12 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useHistoryStore } from "@/hooks/use-history-store";
 import { HistoryPanel } from "./history-panel";
 import { UploaderCard } from "./uploader-card";
-import {
-  AnalysisResult,
-  ErrorResponse,
-  HistoryItem,
-  UploadState,
-} from "@/lib/types";
+import { AnalysisResult, HistoryItem, UploadState } from "@/lib/types";
+import { loadFile } from "@/lib/file";
 
 export function FileUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
@@ -26,9 +22,7 @@ export function FileUploader() {
     null
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [expandedItem, setExpandedItem] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("upload");
-  const [counter, setCounter] = useState(0);
   const { toast } = useToast();
   const { history, isLoading, error, addHistoryItem, removeHistoryItem } =
     useHistoryStore();
@@ -83,28 +77,16 @@ export function FileUploader() {
     setUploadState("uploading");
     setErrorMessage(null);
 
-    // Increment request counter
-    setCounter((prev) => prev + 1);
-
-    // Reset counter if it gets too large
-    if (counter > 999) {
-      setCounter(1);
-    }
-
-    // Log current request number
-    console.log(`Request #${counter}`);
-
     // Create image preview
     const file = files[0];
     let previewUrl = null;
     if (file.type.startsWith("image/")) {
-      previewUrl = URL.createObjectURL(file);
+      previewUrl = await loadFile(file);
       setImagePreview(previewUrl);
-      console.log("Created image preview URL:", previewUrl);
     }
 
     const formData = new FormData();
-    formData.append("file", files[0]);
+    formData.append("file", file);
 
     try {
       // Simulate upload progress
@@ -130,17 +112,49 @@ export function FileUploader() {
           body: formData,
         })
           .then(async (response) => {
-            if (!response.ok) {
-              const errorData: ErrorResponse = await response.json();
-              throw new Error(errorData.error || "Failed to analyze image");
+            const data = await response.json();
+
+            // Check if the response contains isBook field
+            if (data.isBook !== undefined) {
+              // This is a valid API response, even if there's an error
+              return data;
+            } else if (!response.ok) {
+              // This is a server error with no valid API response
+              throw new Error(data.error || "Failed to analyze image");
             }
-            return response.json();
+
+            return data;
           })
-          .then((result: AnalysisResult) => {
-            console.log("API success response:", result);
+          .then((result) => {
+            console.log("API response:", result);
+
+            // Set the error message if present
+            if (result.error) {
+              setErrorMessage(result.error);
+            }
 
             // Set the analysis result
             setAnalysisResult(result);
+
+            // Determine if this is a success, partial success, or error
+            const hasBookInfo = result.isBook && (result.title || result.type);
+            const isComplete =
+              !result.error &&
+              result.isBook &&
+              result.title &&
+              result.type &&
+              result.text;
+            const isPartial = hasBookInfo && !isComplete;
+
+            // Set appropriate state
+            let state: "success" | "partial-success" | "error";
+            if (isComplete) {
+              state = "success";
+            } else if (isPartial) {
+              state = "partial-success";
+            } else {
+              state = "error";
+            }
 
             // Add to history - using the captured previewUrl
             if (previewUrl) {
@@ -148,24 +162,47 @@ export function FileUploader() {
                 id: Date.now().toString(),
                 timestamp: new Date(),
                 imageUrl: previewUrl,
-                state: "success",
-                result: { ...result }, // Create a copy of the result
+                state: state,
+                result: hasBookInfo
+                  ? {
+                      title: result.title || "Unknown Title",
+                      text: result.text || "",
+                      type:
+                        (result.type as "fiction" | "non-fiction") ||
+                        "non-fiction",
+                    }
+                  : undefined,
+                error: result.error,
               };
 
               // Add to IndexedDB history store
               addHistoryItem(historyItem);
             }
 
-            // Change to success state
-            setUploadState("success");
+            // Change state based on result
+            setUploadState(state);
 
-            // Show toast notification
-            toast({
-              title: "Analysis complete",
-              description: `Successfully analyzed "${result.title}"`,
-            });
+            // Show appropriate toast notification
+            if (isComplete) {
+              toast({
+                title: "Analysis complete",
+                description: `Successfully analyzed "${result.title}"`,
+              });
+            } else if (isPartial) {
+              toast({
+                title: "Partial analysis",
+                description:
+                  result.error || "Some information could not be retrieved",
+              });
+            } else {
+              toast({
+                variant: "destructive",
+                title: "Analysis failed",
+                description: result.error || "Could not complete analysis",
+              });
+            }
 
-            // Switch to history tab on mobile after success
+            // Switch to history tab on mobile after completion
             if (isMobile) {
               setTimeout(() => {
                 setActiveTab("history");
@@ -223,26 +260,6 @@ export function FileUploader() {
     setErrorMessage(null);
   };
 
-  const toggleExpand = (id: string) => {
-    if (expandedItem === id) {
-      setExpandedItem(null);
-    } else {
-      setExpandedItem(id);
-    }
-  };
-
-  const handleRemoveHistoryItem = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    removeHistoryItem(id);
-    if (expandedItem === id) {
-      setExpandedItem(null);
-    }
-  };
-
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  };
-
   return (
     <div className="w-full">
       {/* Mobile view with tabs */}
@@ -277,10 +294,7 @@ export function FileUploader() {
             <HistoryPanel
               history={history}
               isLoading={isLoading}
-              expandedItem={expandedItem}
-              toggleExpand={toggleExpand}
-              removeHistoryItem={handleRemoveHistoryItem}
-              formatTime={formatTime}
+              removeHistoryItem={removeHistoryItem}
             />
           </TabsContent>
         </Tabs>
@@ -306,10 +320,7 @@ export function FileUploader() {
           <HistoryPanel
             history={history}
             isLoading={isLoading}
-            expandedItem={expandedItem}
-            toggleExpand={toggleExpand}
-            removeHistoryItem={handleRemoveHistoryItem}
-            formatTime={formatTime}
+            removeHistoryItem={removeHistoryItem}
           />
         </div>
       </div>

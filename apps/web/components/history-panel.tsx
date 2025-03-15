@@ -2,29 +2,52 @@
 
 import { HistoryItem } from "@/lib/types";
 import { Card, CardContent } from "./ui/card";
-import { AlertCircle, ChevronDown, ChevronUp, Clock, Loader2, X } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Clock,
+  Loader2,
+  X,
+} from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
 import { Alert, AlertDescription } from "./ui/alert";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 export function HistoryPanel({
   history,
   isLoading,
-  expandedItem,
-  toggleExpand,
   removeHistoryItem,
-  formatTime,
 }: {
   history: HistoryItem[];
   isLoading: boolean;
-  expandedItem: string | null;
-  toggleExpand: (id: string) => void;
   removeHistoryItem: (id: string, e: React.MouseEvent) => void;
-  formatTime: (date: Date) => string;
 }) {
-  // Debug rendering
-  console.log("Rendering history panel with", history.length, "items");
+  const [expandedItem, setExpandedItem] = useState<string | null>(null);
+
+  const toggleExpand = (id: string) => {
+    const item = history.find((item) => item.id === id);
+    if (!item || !item.result?.text) return;
+    if (expandedItem === id) {
+      setExpandedItem(null);
+    } else {
+      setExpandedItem(id);
+    }
+  };
+
+  const handleRemoveHistoryItem = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    removeHistoryItem(id, e);
+    if (expandedItem === id) {
+      setExpandedItem(null);
+    }
+  };
+
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  };
 
   // Display loading state
   if (isLoading) {
@@ -77,6 +100,9 @@ export function HistoryPanel({
                       src={item.imageUrl || "/placeholder.svg"}
                       alt="Book cover"
                       className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = "/placeholder.svg";
+                      }}
                     />
                   </div>
                   <div className="ml-3 flex-grow">
@@ -84,11 +110,19 @@ export function HistoryPanel({
                       <div className="flex items-center">
                         <Badge
                           variant={
-                            item.state === "success" ? "default" : "destructive"
+                            item.state === "success"
+                              ? "default"
+                              : item.state === "partial-success"
+                                ? "partial"
+                                : "destructive"
                           }
                           className="mr-2"
                         >
-                          {item.state === "success" ? "Success" : "Error"}
+                          {item.state === "success"
+                            ? "Success"
+                            : item.state === "partial-success"
+                              ? "Partial"
+                              : "Error"}
                         </Badge>
                         <span className="text-xs text-gray-500 flex items-center">
                           <Clock className="h-3 w-3 mr-1" />
@@ -97,40 +131,34 @@ export function HistoryPanel({
                       </div>
                       <div className="flex items-center">
                         <button
-                          onClick={(e) => removeHistoryItem(item.id, e)}
+                          onClick={(e) => handleRemoveHistoryItem(item.id, e)}
                           className="p-1 rounded-full hover:bg-gray-200 text-gray-500"
                           aria-label="Remove item"
                         >
                           <X className="h-4 w-4" />
                         </button>
-                        {expandedItem === item.id ? (
-                          <ChevronUp className="h-5 w-5 text-gray-500 ml-1" />
-                        ) : (
-                          <ChevronDown className="h-5 w-5 text-gray-500 ml-1" />
-                        )}
+                        {item.result?.text &&
+                          (expandedItem === item.id ? (
+                            <ChevronUp className="h-5 w-5 text-gray-500 ml-1" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-500 ml-1" />
+                          ))}
                       </div>
                     </div>
-                    <div className="mt-1">
-                      {item.state === "success" && item.result ? (
-                        <p className="font-medium truncate">
-                          {item.result.title}
-                        </p>
-                      ) : (
-                        <p className="text-red-600 font-medium truncate">
-                          {item.error}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expanded content */}
-                {expandedItem === item.id &&
-                  item.state === "success" &&
-                  item.result && (
-                    <div className="px-4 pb-4 pt-1 border-t">
-                      <div className="flex justify-between items-center mb-2">
-                        <h4 className="font-semibold">{item.result.title}</h4>
+                    <div className="mt-1 flex items-center justify-between">
+                      <div className="mt-1">
+                        {item.result?.title && (
+                          <p className="font-medium break-words">
+                            {item.result.title}
+                          </p>
+                        )}
+                        {item.error && (
+                          <p className="text-red-600 font-medium truncate">
+                            {item.error}
+                          </p>
+                        )}
+                      </div>
+                      {item.result?.type && (
                         <Badge
                           variant={
                             item.result.type === "fiction"
@@ -140,21 +168,20 @@ export function HistoryPanel({
                         >
                           {item.result.type}
                         </Badge>
-                      </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {expandedItem === item.id &&
+                  item.state === "success" &&
+                  item.result?.text && (
+                    <div className="px-4 pb-4 pt-1 border-t">
                       <p className="text-sm text-gray-600">
                         {item.result.text}
                       </p>
                     </div>
                   )}
-
-                {expandedItem === item.id && item.state === "error" && (
-                  <div className="px-4 pb-4 pt-1 border-t">
-                    <Alert variant="destructive" className="mt-2">
-                      <AlertCircle className="h-4 w-4" />
-                      <AlertDescription>{item.error}</AlertDescription>
-                    </Alert>
-                  </div>
-                )}
               </div>
             ))}
           </div>

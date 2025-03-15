@@ -3,6 +3,7 @@ export type UploadState =
   | "uploading"
   | "processing"
   | "success"
+  | "partial-success"
   | "error";
 
 export type AnalysisResult = {
@@ -15,7 +16,7 @@ export type HistoryItem = {
   id: string;
   timestamp: Date;
   imageUrl: string;
-  state: "success" | "error";
+  state: "success" | "partial-success" | "error";
   result?: AnalysisResult;
   error?: string;
 };

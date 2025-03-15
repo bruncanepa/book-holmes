@@ -1,10 +1,11 @@
 "use client";
 
-import { Upload, Loader2, CheckCircle, AlertCircle, Badge } from "lucide-react";
+import { Upload, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { AnalysisResult, UploadState } from "@/lib/types";
 import { Alert, AlertDescription } from "./ui/alert";
+import { Badge } from "./ui/badge";
 
 export function UploaderCard({
   uploadState,
@@ -131,12 +132,52 @@ export function UploaderCard({
                     Analysis Complete
                   </span>
                 </div>
-                <button
-                  onClick={resetUploader}
-                  className="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
-                >
-                  Upload Another Image
-                </button>
+              </div>
+            </>
+          )}
+
+          {uploadState === "partial-success" && analysisResult && (
+            <>
+              <div className="mb-4 w-full">
+                <img
+                  src={imagePreview || "/placeholder.svg"}
+                  alt="Partially processed image"
+                  className="mx-auto max-h-48 max-w-full object-contain rounded-md"
+                />
+              </div>
+              <div className="w-full">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-lg">
+                    {analysisResult.title || "Unknown Title"}
+                  </h3>
+                  {analysisResult.type && (
+                    <Badge
+                      variant={
+                        analysisResult.type === "fiction"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {analysisResult.type}
+                    </Badge>
+                  )}
+                </div>
+                {analysisResult.text && (
+                  <p className="text-sm text-gray-600 mb-4 max-h-24 overflow-y-auto">
+                    {analysisResult.text}
+                  </p>
+                )}
+                <Alert className="mb-4 border-yellow-500 bg-yellow-50 text-yellow-800">
+                  <AlertCircle className="h-4 w-4 text-yellow-600" />
+                  <AlertDescription>
+                    {errorMessage || "Some information could not be retrieved"}
+                  </AlertDescription>
+                </Alert>
+                <div className="flex items-center justify-center">
+                  <span className="text-yellow-600 font-medium">
+                    Partial Analysis Complete
+                  </span>
+                </div>
               </div>
             </>
           )}
@@ -154,13 +195,16 @@ export function UploaderCard({
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errorMessage}</AlertDescription>
               </Alert>
-              <button
-                onClick={resetUploader}
-                className="w-full py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md text-sm font-medium transition-colors"
-              >
-                Try Again
-              </button>
             </>
+          )}
+
+          {Boolean(!!analysisResult || errorMessage) && (
+            <button
+              onClick={resetUploader}
+              className="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"
+            >
+              Upload Another Image
+            </button>
           )}
         </div>
       </CardContent>
