@@ -2,16 +2,8 @@
 
 import { HistoryItem } from "@/lib/types";
 import { Card, CardContent } from "./ui/card";
-import {
-  AlertCircle,
-  ChevronDown,
-  ChevronUp,
-  Clock,
-  Loader2,
-  X,
-} from "lucide-react";
+import { ChevronDown, ChevronUp, Clock, Loader2, X } from "lucide-react";
 import { ScrollArea } from "./ui/scroll-area";
-import { Alert, AlertDescription } from "./ui/alert";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
@@ -160,15 +152,7 @@ export function HistoryPanel({
                         )}
                       </div>
                       {item.result?.type && (
-                        <Badge
-                          variant={
-                            item.result.type === "fiction"
-                              ? "default"
-                              : "secondary"
-                          }
-                        >
-                          {item.result.type}
-                        </Badge>
+                        <Badge variant="secondary">{item.result.type}</Badge>
                       )}
                     </div>
                   </div>

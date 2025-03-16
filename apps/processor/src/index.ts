@@ -4,15 +4,56 @@ import express from "express";
 import cors from "cors";
 import multer from "multer";
 import { writeFileSync } from "./lib/file";
-import { BookDetectorService } from "./services/book-detector-service";
+import { BookDetectorService } from "./services/book-detector.service";
+import { BookDetectionEvent } from "./dtos/book-detection.dto";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
 app.use(express.json());
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+  next();
+});
 
 const PORT = process.env.PORT || 3002;
+
+// Store active SSE clients
+const clients = new Set<{ id: string; send: (data: string) => void }>();
+
+// SSE endpoint
+app.get("/api/events", (req, res) => {
+  const clientId = Date.now().toString();
+
+  // Set headers for SSE
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+
+  // Send initial connection message
+  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
+
+  const client = {
+    id: clientId,
+    send: (data: string) => res.write(`data: ${data}\n\n`),
+  };
+
+  clients.add(client);
+  console.log(`Client ${clientId} connected`);
+
+  // Remove client on connection close
+  req.on("close", () => {
+    clients.delete(client);
+    console.log(`Client ${clientId} disconnected`);
+  });
+});
 
 app.post(
   "/api/analyze",

@@ -81,7 +81,7 @@ export function UploaderCard({
             </>
           )}
 
-          {uploadState === "processing" && (
+          {(uploadState === "success" || uploadState === "processing") && (
             <>
               {imagePreview ? (
                 <div className="mb-4 w-full">
@@ -94,43 +94,43 @@ export function UploaderCard({
               ) : (
                 <Loader2 className="w-10 h-10 mb-4 text-blue-500 animate-spin" />
               )}
-              <p className="mb-2 text-center text-gray-600">
-                Processing Image...
-              </p>
-            </>
-          )}
 
-          {uploadState === "success" && analysisResult && (
-            <>
-              <div className="mb-4 w-full">
-                <img
-                  src={imagePreview || "/placeholder.svg"}
-                  alt="Processed image"
-                  className="mx-auto max-h-48 max-w-full object-contain rounded-md"
-                />
-              </div>
+              {uploadState === "processing" && (
+                <p className="mb-2 text-center text-gray-600">
+                  Processing Image...
+                </p>
+              )}
+
               <div className="w-full">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold text-lg">
-                    {analysisResult.title}
-                  </h3>
-                  <Badge
-                    variant={
-                      analysisResult.type === "fiction"
-                        ? "default"
-                        : "secondary"
-                    }
-                  >
-                    {analysisResult.type}
-                  </Badge>
+                  {analysisResult?.title && (
+                    <h3 className="font-semibold text-lg">
+                      {analysisResult.title}
+                    </h3>
+                  )}
+                  {analysisResult?.type && (
+                    <Badge
+                      variant={
+                        analysisResult.type === "fiction"
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {analysisResult.type}
+                    </Badge>
+                  )}
                 </div>
-                <BookContent content={analysisResult.text} />
-                <div className="flex items-center justify-center">
-                  <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
-                  <span className="text-green-600 font-medium">
-                    Analysis Complete
-                  </span>
-                </div>
+                {analysisResult?.text && (
+                  <BookContent content={analysisResult.text} />
+                )}
+                {uploadState === "success" && (
+                  <div className="flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
+                    <span className="text-green-600 font-medium">
+                      Analysis Complete
+                    </span>
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -197,7 +197,9 @@ export function UploaderCard({
             </>
           )}
 
-          {Boolean(!!analysisResult || errorMessage) && (
+          {Boolean(
+            ["success", "partial-success", "error"].includes(uploadState)
+          ) && (
             <button
               onClick={resetUploader}
               className="mt-4 w-full py-2 bg-gray-100 hover:bg-gray-200 rounded-md text-sm font-medium transition-colors"

@@ -1,6 +1,7 @@
 import {
   BookDetectionDto,
   BookDetectionDtoSchema,
+  BookDetectionEvent,
 } from "../dtos/book-detection.dto";
 import { GoogleBooks } from "../lib/google-books";
 import { GoogleGemini } from "../lib/google-gemini";
@@ -12,35 +13,49 @@ export class BookDetectorService {
   private vision: GoogleVision;
   private gemini: GoogleGemini;
   private googleBooks: GoogleBooks;
+  private sendUpdate?: (event: BookDetectionEvent) => void;
 
-  constructor() {
+  constructor(sendUpdate?: (event: BookDetectionEvent) => void) {
     this.vision = new GoogleVision();
     this.gemini = new GoogleGemini();
     this.googleBooks = new GoogleBooks();
+    this.sendUpdate = sendUpdate;
+  }
+
+  private emitEvent(event: BookDetectionEvent) {
+    if (this.sendUpdate) {
+      this.sendUpdate(event);
+    } else {
+      console.log(
+        `EVENT: ${event.type} ${event.data ? JSON.stringify(event.data) : ""}`
+      );
+    }
   }
 
   async checkIfObjectIsBook(imageBuffer: Buffer) {
     const objects = await this.vision.detectObject(imageBuffer);
     let isBook = false;
-    let bookBoundingBox = null;
+
+    const categories = ["book", "box"];
 
     for (const object of objects) {
-      if (object?.name?.toLowerCase() === "book") {
+      if (!object?.name) continue;
+      if (categories.some((cat) => object.name!.toLowerCase().includes(cat))) {
         console.log(
           `Book detected (Confidence: ${((object.score || 0) * 100).toFixed(2)}%)`
         );
         isBook = true;
-        bookBoundingBox = object.boundingPoly; // Save bounding box for potential refinement
         break;
       }
     }
 
     if (!isBook) {
+      const error = "No book detected in the image.";
       console.error(
-        "No book detected in the image.",
+        error,
         JSON.stringify({ objects: objects.map((o) => o.name) })
       );
-      throw new Error("No book detected in the image.");
+      throw new Error(error);
     }
 
     return isBook;
@@ -52,10 +67,7 @@ export class BookDetectorService {
       throw new Error("It's a book, but no text found in image");
     }
 
-    // The first textAnnotation contains the full text detected in the image
     const fullText = textResult?.description;
-
-    // Simple heuristic: Assume the first prominent text block is the title
     const possibleTitle = fullText
       ?.replaceAll(/[^a-zA-Z0-9]/g, " ")
       .replaceAll("\n", " ")
@@ -76,7 +88,6 @@ export class BookDetectorService {
       const book = await this.googleBooks.getBookByTitle(title);
       if (!book) throw new Error("Book not found");
 
-      // Check categories and subject to determine if it's fiction
       const categories: string[] = this.googleBooks.getBookCategories(book);
       const isFiction = categories.some((cat: string) =>
         /fiction|novel|stories|fantasy|sci-fi|romance/i.test(cat)
@@ -92,28 +103,37 @@ export class BookDetectorService {
   }
 
   async detectBook(imageBuffer: Buffer): Promise<BookDetectionDto> {
-    type NewType = BookDetectionDto;
-
-    const data: NewType = {};
+    const data: BookDetectionDto = {};
     try {
-      const svc = new BookDetectorService();
-
-      await svc.checkIfObjectIsBook(imageBuffer);
-
+      await this.checkIfObjectIsBook(imageBuffer);
       data.isBook = true;
-      data.title = await svc.extractTextFromImage(imageBuffer);
+      this.emitEvent({ type: "book-detected", data: { isBook: true } });
 
-      const { isFiction, previewLink } = await svc.getBookInfo(data.title);
+      data.title = await this.extractTextFromImage(imageBuffer);
+      this.emitEvent({ type: "book-title", data: { title: data.title } });
+
+      const { isFiction, previewLink, book } = await this.getBookInfo(
+        data.title
+      );
       data.type = isFiction ? "fiction" : "non-fiction";
+      this.emitEvent({ type: "book-type", data: { type: data.type } });
+
+      if (book.volumeInfo.description) {
+        data.description = book.volumeInfo.description;
+        this.emitEvent({
+          type: "book-description",
+          data: { description: data.description },
+        });
+      }
 
       if (previewLink) {
-        const content = await new Scraper().scrapeBookContent(
+        const { content } = await new Scraper().scrapeBookContent(
           previewLink,
           isFiction ? "2" : "1"
         );
-        data.text = content || "";
+        data.text = content;
       }
-      // TODO: add snippet as description
+
       if (!data.text) throw new Error("No book content found");
     } catch (error) {
       console.error("Error processing image:", error);

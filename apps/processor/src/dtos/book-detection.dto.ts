@@ -1,4 +1,4 @@
-import z from "zod";
+import { z } from "zod";
 
 export const BookDetectionDtoSchema = z.object({
   isBook: z.boolean().optional(),
@@ -6,6 +6,12 @@ export const BookDetectionDtoSchema = z.object({
   type: z.string().optional(),
   text: z.string().optional(),
   error: z.string().optional(),
+  description: z.string().optional(),
 });
 
-export type BookDetectionDto = Partial<z.infer<typeof BookDetectionDtoSchema>>;
+export type BookDetectionDto = z.infer<typeof BookDetectionDtoSchema>;
+
+export type BookDetectionEvent = {
+  type: "book-detected" | "book-title" | "book-type" | "book-description";
+  data: Partial<BookDetectionDto>;
+};

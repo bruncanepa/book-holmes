@@ -48,7 +48,7 @@ export class GoogleBooks {
         data = JSON.parse(readFileSync("google-books.json", "utf8"));
       } else {
         const query = encodeURIComponent(`intitle:"${title}"`);
-        const url = `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${config.google.apiKey}`;
+        const url = `https://www.googleapis.com/books/v1/volumes?q=${query}`;
         const response = await axios.get(url);
         data = response.data;
         writeFileSync("google-books.json", JSON.stringify(data, null, 2));

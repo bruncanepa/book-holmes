@@ -55,7 +55,9 @@ export class Scraper {
     }, height);
   }
 
-  async scrapeBookContent(url: string, pageNumber: "1" | "2"): Promise<string> {
+  async scrapeBookContent(url: string, pageNumber: "1" | "2") {
+    let content = "";
+    let screenshot = "";
     const browser = await puppeteer.launch({
       headless: config.puppeteer.headless,
     });
@@ -99,34 +101,32 @@ export class Scraper {
         height: 1000,
       };
 
-      let content = "";
       switch (pageNumber) {
         case "1": {
-          const firstScreenshot = await page.screenshot({
+          screenshot = await page.screenshot({
             encoding: "base64",
             clip,
           });
-          content = await this.extractTextFromScreenshot(firstScreenshot);
+          content = await this.extractTextFromScreenshot(screenshot);
           break;
         }
         case "2": {
           await this.scroll(page, 2200);
           await wait(500);
-          const secondScreenshot = (await page.screenshot({
+          screenshot = (await page.screenshot({
             encoding: "base64",
             clip,
           })) as string;
-          content = await this.extractTextFromScreenshot(secondScreenshot);
+          content = await this.extractTextFromScreenshot(screenshot);
           break;
         }
       }
-
-      return content;
     } catch (err) {
       console.error(err);
-      throw new Error("No content found for book");
+      if (!content && !screenshot) throw new Error("No content found for book");
     } finally {
       await browser.close();
+      return { content, screenshot };
     }
   }
 }

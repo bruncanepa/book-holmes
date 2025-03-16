@@ -12,6 +12,7 @@ import { HistoryPanel } from "./history-panel";
 import { UploaderCard } from "./uploader-card";
 import { AnalysisResult, HistoryItem, UploadState } from "@/lib/types";
 import { loadFile } from "@/lib/file";
+import { useBookDetectionEvents } from "@/hooks/use-book-detection-events";
 
 export function FileUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
@@ -27,11 +28,14 @@ export function FileUploader() {
   const { history, isLoading, error, addHistoryItem, removeHistoryItem } =
     useHistoryStore();
 
-  // Check if we're on mobile
+  useBookDetectionEvents((event) =>
+    // @ts-ignore: Type '{ data: BookDetectionEvent; }' is not assignable to type 'BookDetectionEvent'.
+    setAnalysisResult((prev) => ({ ...prev, ...event.data }))
+  );
+
   const isMobile =
     typeof window !== "undefined" ? window.innerWidth < 768 : false;
 
-  // Log any errors from the history store
   useEffect(() => {
     if (error) {
       console.error("History store error:", error);
@@ -77,7 +81,6 @@ export function FileUploader() {
     setUploadState("uploading");
     setErrorMessage(null);
 
-    // Create image preview
     const file = files[0];
     let previewUrl = null;
     if (file.type.startsWith("image/")) {
@@ -114,12 +117,9 @@ export function FileUploader() {
           .then(async (response) => {
             const data = await response.json();
 
-            // Check if the response contains isBook field
             if (data.isBook !== undefined) {
-              // This is a valid API response, even if there's an error
               return data;
             } else if (!response.ok) {
-              // This is a server error with no valid API response
               throw new Error(data.error || "Failed to analyze image");
             }
 
@@ -128,15 +128,12 @@ export function FileUploader() {
           .then((result) => {
             console.log("API response:", result);
 
-            // Set the error message if present
             if (result.error) {
               setErrorMessage(result.error);
             }
 
-            // Set the analysis result
             setAnalysisResult(result);
 
-            // Determine if this is a success, partial success, or error
             const hasBookInfo = result.isBook && (result.title || result.type);
             const isComplete =
               !result.error &&
@@ -146,7 +143,6 @@ export function FileUploader() {
               result.text;
             const isPartial = hasBookInfo && !isComplete;
 
-            // Set appropriate state
             let state: "success" | "partial-success" | "error";
             if (isComplete) {
               state = "success";
@@ -156,7 +152,6 @@ export function FileUploader() {
               state = "error";
             }
 
-            // Add to history - using the captured previewUrl
             if (previewUrl) {
               const historyItem: HistoryItem = {
                 id: Date.now().toString(),
@@ -170,6 +165,7 @@ export function FileUploader() {
                       type:
                         (result.type as "fiction" | "non-fiction") ||
                         "non-fiction",
+                      description: result.description || "",
                     }
                   : undefined,
                 error: result.error,
@@ -179,10 +175,8 @@ export function FileUploader() {
               addHistoryItem(historyItem);
             }
 
-            // Change state based on result
             setUploadState(state);
 
-            // Show appropriate toast notification
             if (isComplete) {
               toast({
                 title: "Analysis complete",
@@ -212,14 +206,11 @@ export function FileUploader() {
           .catch((error) => {
             console.error("Error:", error);
 
-            // Extract error message
             const errorMessage =
               error.message || "An unexpected error occurred";
 
-            // Set the error message
             setErrorMessage(errorMessage);
 
-            // Add to history - using the captured previewUrl
             if (previewUrl) {
               const historyItem: HistoryItem = {
                 id: Date.now().toString(),
@@ -229,14 +220,11 @@ export function FileUploader() {
                 error: errorMessage,
               };
 
-              // Add to IndexedDB history store
               addHistoryItem(historyItem);
             }
 
-            // Change to error state
             setUploadState("error");
 
-            // Show toast notification
             toast({
               variant: "destructive",
               title: "Analysis failed",

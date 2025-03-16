@@ -9,6 +9,7 @@ export type UploadState =
 export type AnalysisResult = {
   title: string;
   text: string;
+  description: string;
   type: "fiction" | "non-fiction";
 };
 
@@ -23,4 +24,9 @@ export type HistoryItem = {
 
 export type ErrorResponse = {
   error: string;
+};
+
+export type BookDetectionEvent = {
+  type: "book-detected" | "title-extracted" | "book-info";
+  data: Partial<AnalysisResult>;
 };
