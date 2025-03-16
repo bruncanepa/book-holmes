@@ -1,7 +1,7 @@
-import fs from "fs";
 import { ImageAnnotatorClient } from "@google-cloud/vision";
 import { google } from "@google-cloud/vision/build/protos/protos";
 import config from "../config";
+import { writeFileSync } from "./file";
 
 export class GoogleVision {
   private vision: ImageAnnotatorClient;
@@ -22,7 +22,7 @@ export class GoogleVision {
         })) || [];
 
     if (!config.mock.googleVisionObjectLocalization) {
-      fs.writeFileSync(
+      writeFileSync(
         "objectLocalization.json",
         JSON.stringify([objectResult], null, 2)
       );
@@ -58,7 +58,7 @@ export class GoogleVision {
     }
 
     if (!config.mock.googleVisionTextDetection) {
-      fs.writeFileSync(
+      writeFileSync(
         `textDetection-${id}.json`,
         JSON.stringify([textResult], null, 2)
       );

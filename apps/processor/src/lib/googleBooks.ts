@@ -1,6 +1,7 @@
-import fs from "fs";
+import { readFileSync } from "fs";
 import axios from "axios";
 import config from "../config";
+import { writeFileSync } from "./file";
 
 export type GoogleBook = {
   id: string;
@@ -44,13 +45,13 @@ export class GoogleBooks {
     try {
       let data: GoogleBooksVolume;
       if (config.mock.googleBooks) {
-        data = JSON.parse(fs.readFileSync("google-books.json", "utf8"));
+        data = JSON.parse(readFileSync("google-books.json", "utf8"));
       } else {
         const query = encodeURIComponent(`intitle:"${title}"`);
         const url = `https://www.googleapis.com/books/v1/volumes?q=${query}&key=${config.google.apiKey}`;
         const response = await axios.get(url);
         data = response.data;
-        fs.writeFileSync("google-books.json", JSON.stringify(data, null, 2));
+        writeFileSync("google-books.json", JSON.stringify(data, null, 2));
       }
 
       if (!data.items || data.items.length === 0) {

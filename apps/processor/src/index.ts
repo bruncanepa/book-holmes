@@ -4,13 +4,12 @@ import express, { text } from "express";
 import cors from "cors";
 import multer from "multer";
 import { z } from "zod";
-import axios from "axios";
-import fs from "fs";
 import { GoogleVision } from "./lib/googleVision";
 import { GoogleGemini } from "./lib/googleGemini";
 import { bookTitlePrompt } from "./prompts";
 import { GoogleBooks } from "./lib/googleBooks";
 import { Scraper } from "./lib/scraper";
+import { writeFileSync } from "./lib/file";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -126,7 +125,7 @@ app.post(
 
     try {
       const result = await detectBook(req.file.buffer);
-      fs.writeFileSync("result.json", JSON.stringify(result, null, 2));
+      writeFileSync("result.json", JSON.stringify(result, null, 2));
       res.status(result.error ? 400 : 200).json(result);
     } catch (error) {
       res.status(500).json({
