@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "./ui/alert";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { BookContent } from "./book-content";
 
 export function HistoryPanel({
   history,
@@ -73,13 +74,13 @@ export function HistoryPanel({
   }
 
   return (
-    <Card className="w-full">
-      <CardContent className="p-4">
+    <Card className="w-full h-full">
+      <CardContent className="p-4 h-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium text-lg">Analysis History</h3>
           <Badge variant="outline">{history.length} items</Badge>
         </div>
-        <ScrollArea className="h-[500px] pr-4">
+        <ScrollArea className="h-[600px] pr-4">
           <div className="space-y-3">
             {history.map((item) => (
               <div
@@ -130,6 +131,12 @@ export function HistoryPanel({
                         </span>
                       </div>
                       <div className="flex items-center">
+                        {item.result?.text &&
+                          (expandedItem === item.id ? (
+                            <ChevronUp className="h-5 w-5 text-gray-500 ml-1" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5 text-gray-500 ml-1" />
+                          ))}
                         <button
                           onClick={(e) => handleRemoveHistoryItem(item.id, e)}
                           className="p-1 rounded-full hover:bg-gray-200 text-gray-500"
@@ -137,12 +144,6 @@ export function HistoryPanel({
                         >
                           <X className="h-4 w-4" />
                         </button>
-                        {item.result?.text &&
-                          (expandedItem === item.id ? (
-                            <ChevronUp className="h-5 w-5 text-gray-500 ml-1" />
-                          ) : (
-                            <ChevronDown className="h-5 w-5 text-gray-500 ml-1" />
-                          ))}
                       </div>
                     </div>
                     <div className="mt-1 flex items-center justify-between">
@@ -153,7 +154,7 @@ export function HistoryPanel({
                           </p>
                         )}
                         {item.error && (
-                          <p className="text-red-600 font-medium truncate">
+                          <p className="text-red-600 font-medium break-words">
                             {item.error}
                           </p>
                         )}
@@ -177,9 +178,7 @@ export function HistoryPanel({
                   item.state === "success" &&
                   item.result?.text && (
                     <div className="px-4 pb-4 pt-1 border-t">
-                      <p className="text-sm text-gray-600">
-                        {item.result.text}
-                      </p>
+                      <BookContent content={item.result.text} />
                     </div>
                   )}
               </div>

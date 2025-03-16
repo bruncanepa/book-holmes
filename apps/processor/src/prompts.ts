@@ -9,3 +9,10 @@ Rules:
 4. Ensure the title is in its most searchable form for Google Books API
 5. If you cannot confidently identify the title, return an empty string
 6. Do not include any explanations or additional text in your response`;
+
+export const bookSectionsPrompt = (input: string[]) =>
+  `Given this array of strings that represent sections of a book, identify which one is most likely to be the first section or chapter of actual book content (not cover, not preface, copyright, etc). Return only the index number of that section.
+Example input: ["Copyright", "Table of Contents", "Chapter 1: The Beginning", "Chapter 2"]
+Example output: "2"       
+Input: ${input.join(", ")}
+Output (just the number):`;

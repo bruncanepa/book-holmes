@@ -302,7 +302,7 @@ export function FileUploader() {
 
       {/* Desktop view with side-by-side layout */}
       <div className="hidden md:flex md:space-x-6">
-        <div className="w-1/2">
+        <div className="w-1/2 h-full">
           <UploaderCard
             uploadState={uploadState}
             dragActive={dragActive}

@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { AnalysisResult, UploadState } from "@/lib/types";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Badge } from "./ui/badge";
+import { BookContent } from "./book-content";
 
 export function UploaderCard({
   uploadState,
@@ -32,11 +33,11 @@ export function UploaderCard({
 }) {
   return (
     <Card
-      className={`w-full transition-all ${dragActive ? "border-green-500 shadow-lg" : ""}`}
+      className={`w-full h-full transition-all ${dragActive ? "border-green-500 shadow-lg" : ""}`}
     >
-      <CardContent className="p-6">
+      <CardContent className="p-6 h-full">
         <div
-          className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg border-gray-300 bg-white"
+          className="flex flex-col items-center justify-center p-8 border-2 border-dashed rounded-lg border-gray-300 bg-white h-full"
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
@@ -123,9 +124,7 @@ export function UploaderCard({
                     {analysisResult.type}
                   </Badge>
                 </div>
-                <p className="text-sm text-gray-600 mb-4 max-h-24 overflow-y-auto">
-                  {analysisResult.text}
-                </p>
+                <BookContent content={analysisResult.text} />
                 <div className="flex items-center justify-center">
                   <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
                   <span className="text-green-600 font-medium">

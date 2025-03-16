@@ -9,30 +9,24 @@ export class GoogleGemini {
     this.model = new GoogleGenerativeAI(config.googleGemini.apiKey);
   }
 
-  async generateText(prompt: string) {
+  async chatCompletion(id: string, prompt: string): Promise<string> {
     try {
-      const model = this.model.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
-    } catch (error) {
-      console.error("Error generating text:", error);
-      throw new Error("Failed to generate text with Gemini");
-    }
-  }
-
-  async chatCompletion(prompt: string, text: string): Promise<string> {
-    try {
+      const fileName = `gemini-response-${id}.txt`;
       if (config.mock.googleGemini) {
-        const data = fs.readFileSync("gemini-response.txt", "utf8");
-        return data;
+        let data: string | undefined;
+        try {
+          data = fs.readFileSync(fileName, "utf8");
+        } catch (error) {}
+        if (data) return data;
       }
 
-      const model = this.model.getGenerativeModel({ model: "gemini-2.0-flash" });
-      const result = await model.generateContent(`${prompt}\n\nText: ${text}`);
+      const model = this.model.getGenerativeModel({
+        model: "gemini-2.0-flash",
+      });
+      const result = await model.generateContent(prompt);
       const response = await result.response;
       const resText = response.text();
-      fs.writeFileSync(`gemini-response.txt`, resText);
+      fs.writeFileSync(fileName, resText);
       return resText;
     } catch (error) {
       console.error("Error in Gemini chat completion:", error);

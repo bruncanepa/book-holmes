@@ -1,6 +1,6 @@
 import "./config";
 
-import express from "express";
+import express, { text } from "express";
 import cors from "cors";
 import multer from "multer";
 import { z } from "zod";
@@ -9,6 +9,8 @@ import fs from "fs";
 import { GoogleVision } from "./lib/googleVision";
 import { GoogleGemini } from "./lib/googleGemini";
 import { bookTitlePrompt } from "./prompts";
+import { GoogleBooks } from "./lib/googleBooks";
+import { Scraper } from "./lib/scraper";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -31,56 +33,23 @@ const BookDetectionSchema = z.object({
 
 type BookDetection = Partial<z.infer<typeof BookDetectionSchema>>;
 
-async function getBookInfo(title: string): Promise<{ isFiction: boolean }> {
+async function getBookInfo(title: string) {
   try {
-    // Use Google Books API to get book information
-    const response = await axios.get(
-      `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(title)}`
-    );
-    const book = response.data.items?.[0];
+    const googleBooks = new GoogleBooks();
 
-    if (!book) {
-      throw new Error("Book not found");
-    }
+    const book = await googleBooks.getBookByTitle(title);
+    if (!book) throw new Error("Book not found");
 
     // Check categories and subject to determine if it's fiction
-    const categories: string[] = book.volumeInfo?.categories || [];
+    const categories: string[] = googleBooks.getBookCategories(book);
     const isFiction = categories.some((cat: string) =>
       /fiction|novel|stories|fantasy|sci-fi|romance/i.test(cat)
     );
 
-    return { isFiction };
+    return { isFiction, book };
   } catch (error) {
+    console.error("GetBookInfo error:", error);
     throw new Error("Failed to get book information");
-  }
-}
-
-async function getBookContent(
-  title: string,
-  isFiction: boolean
-): Promise<string> {
-  try {
-    // Use Open Library API to search for the book
-    const searchResponse = await axios.get(
-      `https://openlibrary.org/search.json?q=${encodeURIComponent(title)}`
-    );
-    const bookId = searchResponse.data.docs?.[0]?.key;
-
-    if (!bookId) {
-      throw new Error("Book content not found");
-    }
-
-    // Get book content from Internet Archive (this is a simplified example)
-    // In reality, you'd need to handle authentication and proper content access
-    const contentResponse = await axios.get(
-      `https://archive.org/details/${bookId}/page/${isFiction ? 1 : 2}`
-    );
-
-    // This is a placeholder - in reality, you'd need to parse the HTML content
-    // and extract the actual page text
-    return contentResponse.data;
-  } catch (error) {
-    throw new Error("Failed to get book content");
   }
 }
 
@@ -103,7 +72,7 @@ async function detectBook(imageBuffer: Buffer): Promise<BookDetection> {
     if (!data.isBook) throw new Error("No book detected in the image.");
 
     // Step 2: Extract text from the image
-    const textResult = await vision.detectText(imageBuffer);
+    const textResult = await vision.detectText("object", imageBuffer);
     if (!textResult) {
       throw new Error("It's a book, but no text found in image");
     }
@@ -116,22 +85,30 @@ async function detectBook(imageBuffer: Buffer): Promise<BookDetection> {
       ?.replaceAll(/[^a-zA-Z0-9]/g, " ")
       .replaceAll("\n", " ")
       .trim();
-    console.log("Full text detected:\n", possibleTitle);
     if (!possibleTitle)
       throw new Error("It's a book, but no title found in image");
 
     const titleAi = await gemini
-      .chatCompletion(bookTitlePrompt, possibleTitle)
+      .chatCompletion("book-title", `${bookTitlePrompt}\n\nText: ${text}`)
       .catch(console.error);
 
     data.title = titleAi || possibleTitle;
 
-    const { isFiction } = await getBookInfo(data.title);
+    const { isFiction, book } = await getBookInfo(data.title);
     data.type = isFiction ? "fiction" : "non-fiction";
 
-    const pageContent = await getBookContent(data.title, isFiction);
-    data.text = pageContent;
+    const { previewLink } = new GoogleBooks().getBookPreviewLink(book);
+    if (previewLink) {
+      const content = await new Scraper().scrapeBookContent(
+        previewLink,
+        isFiction ? "2" : "1"
+      );
+      data.text = content || "";
+    }
+    // TODO: add snippet as description
+    if (!data.text) throw new Error("No book content found");
   } catch (error) {
+    console.error("Error processing image:", error);
     data.error =
       error instanceof Error ? error.message : "Failed to process image";
   } finally {
@@ -139,7 +116,6 @@ async function detectBook(imageBuffer: Buffer): Promise<BookDetection> {
   }
 }
 
-let counter = 0;
 app.post(
   "/api/analyze",
   upload.single("file"),
@@ -149,28 +125,6 @@ app.post(
     }
 
     try {
-      // counter++;
-      // if (counter % 3 === 0) {
-      //   res.status(400).json({
-      //     error: "Not implemented",
-      //     isBook: true,
-      //     text: "",
-      //     title: "La balada de los elefantes",
-      //     type: "fiction",
-      //   } as BookDetection);
-      // } else if (counter % 3 === 1) {
-      //   res.status(200).json({
-      //     isBook: true,
-      //     text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed sit amet nulla auctor, vestibulum magna sed, convallis ex. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Aenean lacinia bibendum nulla sed consectetur. Nulla vitae elit libero, a pharetra augue. Sed posuere consectetur est at lobortis. Nullam id dolor id nibh ultricies vehicula ut id elit. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Praesent commodo cursus magna, vel scelerisque nisl consectetur et. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Integer posuere erat a ante venenatis dapibus posuere velit aliquet. Aenean eu leo quam. Pellentesque ornare sem lacinia quam venenatis vestibulum. Maecenas sed diam eget risus varius blandit sit amet non magna. Nullam quis risus eget urna mollis ornare vel eu leo. Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Donec id elit non mi porta gravida at eget metus. Morbi leo risus, porta ac consectetur ac, vestibulum at eros. Donec ullamcorper nulla non metus auctor fringilla. Praesent commodo cursus magna, vel scelerisque nisl consectetur et. Vivamus sagittis lacus vel augue laoreet rutrum faucibus dolor auctor.",
-      //     title: "La balada de los elefantes",
-      //     type: "fiction",
-      //   } as BookDetection);
-      // } else {
-      //   res.status(400).json({
-      //     error: "Not implemented",
-      //   } as BookDetection);
-      // }
-
       const result = await detectBook(req.file.buffer);
       fs.writeFileSync("result.json", JSON.stringify(result, null, 2));
       res.status(result.error ? 400 : 200).json(result);

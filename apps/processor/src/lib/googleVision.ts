@@ -8,23 +8,23 @@ export class GoogleVision {
 
   constructor() {
     this.vision = new ImageAnnotatorClient({
-      apiKey: config.googleVision.apiKey,
+      apiKey: config.google.apiKey,
     });
   }
 
   async detectObject(imageBuffer: Buffer) {
     const [objectResult] = config.mock.googleVisionObjectLocalization
-      ? (await this.vision.objectLocalization?.({
-          image: { content: imageBuffer },
-        })) || []
-      : (JSON.parse(
+      ? (JSON.parse(
           fs.readFileSync("objectLocalization.json", "utf-8")
-        ) as google.cloud.vision.v1.IAnnotateImageResponse[]);
+        ) as google.cloud.vision.v1.IAnnotateImageResponse[])
+      : (await this.vision.objectLocalization?.({
+          image: { content: imageBuffer },
+        })) || [];
 
     if (!config.mock.googleVisionObjectLocalization) {
       fs.writeFileSync(
         "objectLocalization.json",
-        JSON.stringify(objectResult, null, 2)
+        JSON.stringify([objectResult], null, 2)
       );
     }
 
@@ -32,19 +32,35 @@ export class GoogleVision {
     return objects;
   }
 
-  async detectText(imageBuffer: Buffer) {
-    const [textResult] = config.mock.googleVisionTextDetection
-      ? (await this.vision.textDetection({
+  async detectText(id: string, imageBuffer: Buffer) {
+    let textResult: google.cloud.vision.v1.IAnnotateImageResponse | undefined =
+      undefined;
+    if (config.mock.googleVisionTextDetection) {
+      try {
+        const fileContent = fs.readFileSync(
+          `textDetection-${id}.json`,
+          "utf-8"
+        );
+        if (fileContent) {
+          [textResult] =
+            (JSON.parse(
+              fileContent
+            ) as google.cloud.vision.v1.IAnnotateImageResponse[]) || [];
+        }
+      } catch (error) {}
+    }
+
+    if (!textResult) {
+      [textResult] =
+        (await this.vision.textDetection({
           image: { content: imageBuffer },
-        })) || []
-      : (JSON.parse(
-          fs.readFileSync("textDetection.json", "utf-8")
-        ) as google.cloud.vision.v1.IAnnotateImageResponse[]);
+        })) || [];
+    }
 
     if (!config.mock.googleVisionTextDetection) {
       fs.writeFileSync(
-        "textDetection.json",
-        JSON.stringify(textResult, null, 2)
+        `textDetection-${id}.json`,
+        JSON.stringify([textResult], null, 2)
       );
     }
 
