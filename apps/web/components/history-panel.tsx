@@ -7,7 +7,7 @@ import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
-import { BookContent } from "./book-content";
+import { BookContent, showBookContent } from "./book-content";
 
 export function HistoryPanel({
   history,
@@ -158,13 +158,11 @@ export function HistoryPanel({
                   </div>
                 </div>
 
-                {expandedItem === item.id &&
-                  item.state === "success" &&
-                  item.result?.text && (
-                    <div className="px-4 pb-4 pt-1 border-t">
-                      <BookContent content={item.result.text} />
-                    </div>
-                  )}
+                {expandedItem === item.id && showBookContent(item.result) && (
+                  <div className="px-4 pb-4 pt-1 border-t">
+                    <BookContent result={item.result!} />
+                  </div>
+                )}
               </div>
             ))}
           </div>

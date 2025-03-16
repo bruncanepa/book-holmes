@@ -11,7 +11,7 @@ export default function Home() {
           Your literary detective: Uncover the story behind every cover
         </p>
       </div>
-      <div className="w-full max-w-6xl mx-auto">
+      <div className="w-full mx-auto overflow-y-scroll">
         <FileUploader />
       </div>
     </main>

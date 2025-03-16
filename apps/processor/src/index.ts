@@ -55,6 +55,12 @@ app.get("/api/events", (req, res) => {
   });
 });
 
+// Helper function to send updates to all clients
+const sendUpdate = (event: BookDetectionEvent) => {
+  const data = JSON.stringify(event);
+  clients.forEach((client) => client.send(data));
+};
+
 app.post(
   "/api/analyze",
   upload.single("file"),
@@ -64,9 +70,8 @@ app.post(
     }
 
     try {
-      const result = await new BookDetectorService().detectBook(
-        req.file.buffer
-      );
+      const detector = new BookDetectorService(sendUpdate);
+      const result = await detector.detectBook(req.file.buffer);
       writeFileSync("result.json", JSON.stringify(result, null, 2));
       res.status(result.error ? 400 : 200).json(result);
     } catch (error) {

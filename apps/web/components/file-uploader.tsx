@@ -249,7 +249,7 @@ export function FileUploader() {
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full h-full">
       {/* Mobile view with tabs */}
       <div className="md:hidden w-full">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -289,8 +289,8 @@ export function FileUploader() {
       </div>
 
       {/* Desktop view with side-by-side layout */}
-      <div className="hidden md:flex md:space-x-6">
-        <div className="w-1/2 h-full">
+      <div className="hidden md:flex md:space-x-6 min-h-[40vh]">
+        <div className="w-1/2">
           <UploaderCard
             uploadState={uploadState}
             dragActive={dragActive}
