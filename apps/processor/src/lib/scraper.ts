@@ -1,6 +1,6 @@
 import puppeteer, { Page } from "puppeteer";
-import { GoogleGemini } from "./googleGemini";
-import { GoogleVision } from "./googleVision";
+import { GoogleGemini } from "./google-gemini";
+import { GoogleVision } from "./google-vision";
 import { bookSectionsPrompt as findBookFirstSectionPrompt } from "../prompts";
 import config from "../config";
 
