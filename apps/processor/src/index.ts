@@ -23,6 +23,8 @@ app.use(
   cors({
     origin: process.env.NODE_ENV === "production" ? config.web.url : "*",
     credentials: true,
+    allowedHeaders: ["Authorization"],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
 
@@ -32,7 +34,7 @@ const PORT = process.env.PORT || 3002;
 const clients = new Set<{ id: string; send: (data: string) => void }>();
 
 // SSE endpoint
-app.get("/api/events", (req, res) => {
+app.get("/api/events", (req: express.Request, res: express.Response) => {
   const clientId = Date.now().toString();
 
   // Set headers for SSE
@@ -66,16 +68,21 @@ const sendUpdate = (event: BookDetectionEvent) => {
   clients.forEach((client) => client.send(data));
 };
 
-app.use("/api/analyze", (req, res, next) => {
-  const authKey = req.header("Authorization");
-  if (!authKey || !config.auth.apiKeys.includes(authKey)) {
-    return res.status(401).send({ error: "Unauthorized" });
-  }
-  next();
-});
+// const authMiddleware = (
+//   req: express.Request,
+//   res: express.Response,
+//   next: express.NextFunction
+// ) => {
+//   const authKey = req.header("Authorization");
+//   if (!authKey || !config.auth.apiKeys.includes(authKey)) {
+//     return res.status(401).send({ error: "Unauthorized" });
+//   }
+//   next();
+// };
 
 app.post(
   "/api/analyze",
+  // authMiddleware,
   upload.single("file"),
   async (req: express.Request, res: express.Response) => {
     if (!req.file) {
