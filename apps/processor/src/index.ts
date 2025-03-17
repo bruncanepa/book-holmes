@@ -31,11 +31,12 @@ app.use(
 const PORT = process.env.PORT || 3002;
 
 // Store active SSE clients
-const clients = new Set<{ id: string; send: (data: string) => void }>();
+const clients = new Map<string, { send: (data: string) => void }>();
 
 // SSE endpoint
-app.get("/api/events", (req: express.Request, res: express.Response) => {
-  const clientId = Date.now().toString();
+app.get("/api/events/:id", (req: express.Request, res: express.Response) => {
+  const { id: clientId } = req.params;
+  if (!clientId) return res.status(400).send({ error: "Invalid client ID" });
 
   // Set headers for SSE
   res.writeHead(200, {
@@ -47,53 +48,87 @@ app.get("/api/events", (req: express.Request, res: express.Response) => {
   // Send initial connection message
   res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
 
-  const client = {
-    id: clientId,
-    send: (data: string) => res.write(`data: ${data}\n\n`),
-  };
+  const client = { send: (data: string) => res.write(`data: ${data}\n\n`) };
 
-  clients.add(client);
+  clients.set(clientId, client);
   console.log(`Client ${clientId} connected`);
+
+  const timeout = 5 * 60 * 1000; // 5 minutes in milliseconds
+  req.setTimeout(timeout, () => {
+    res.write("data: Connection timed out\n\n");
+    res.end(); // Close the connection
+    clients.delete(clientId);
+  });
 
   // Remove client on connection close
   req.on("close", () => {
-    clients.delete(client);
+    clients.delete(clientId);
     console.log(`Client ${clientId} disconnected`);
   });
 });
 
 // Helper function to send updates to all clients
-const sendUpdate = (event: BookDetectionEvent) => {
+const sendUpdate = (clientId: string) => (event: BookDetectionEvent) => {
   const data = JSON.stringify(event);
-  clients.forEach((client) => client.send(data));
+  const client = clients.get(clientId);
+  if (client) {
+    console.log(`Sending event to client ${clientId}:`, event);
+    client.send(data);
+    console.log(`Event sent to client ${clientId}`);
+  } else {
+    console.error(`Client ${clientId} not found`);
+  }
 };
 
-// const authMiddleware = (
-//   req: express.Request,
-//   res: express.Response,
-//   next: express.NextFunction
-// ) => {
-//   const authKey = req.header("Authorization");
-//   if (!authKey || !config.auth.apiKeys.includes(authKey)) {
-//     return res.status(401).send({ error: "Unauthorized" });
-//   }
-//   next();
-// };
+const authMiddleware = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const authKey = req.header("Authorization");
+  if (!authKey || !config.auth.apiKeys.includes(authKey)) {
+    return res.status(401).send({ error: "Unauthorized" });
+  }
+  next();
+};
 
 app.post(
   "/api/analyze",
-  // authMiddleware,
+  authMiddleware,
   upload.single("file"),
   async (req: express.Request, res: express.Response) => {
     if (!req.file) {
       return res.status(400).json({ error: "No image file provided" });
     }
+    const { clientId } = req.query;
+    if (!clientId) {
+      return res.status(400).json({ error: "Missing client ID" });
+    }
 
     try {
-      const detector = new BookDetectorService(sendUpdate);
-      const result = await detector.detectBook(req.file.buffer);
-      writeFileSync("result.json", JSON.stringify(result, null, 2));
-      res.status(result.error ? 400 : 200).json(result);
+      const file = req.file;
+      (async () => {
+        const eventHandler = sendUpdate(clientId as string);
+        try {
+          const detector = new BookDetectorService(eventHandler);
+          const result = await detector.detectBook(file.buffer);
+          eventHandler({ type: "completed", data: result });
+          writeFileSync("result.json", JSON.stringify(result, null, 2));
+        } catch (error) {
+          console.error("Error processing image:", error);
+          eventHandler({
+            type: "error",
+            data: {
+              error:
+                error instanceof Error
+                  ? error.message
+                  : "Failed to process image",
+            },
+          });
+        }
+      })();
+
+      res.status(200).json({ success: true });
     } catch (error) {
       res.status(500).json({
         error:

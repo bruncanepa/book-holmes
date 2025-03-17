@@ -32,6 +32,7 @@ export function HistoryPanel({
 
   const handleRemoveHistoryItem = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     removeHistoryItem(id, e);
     if (expandedItem === id) {
       setExpandedItem(null);

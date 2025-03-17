@@ -12,6 +12,12 @@ export const BookDetectionDtoSchema = z.object({
 export type BookDetectionDto = z.infer<typeof BookDetectionDtoSchema>;
 
 export type BookDetectionEvent = {
-  type: "book-detected" | "book-title" | "book-type" | "book-description";
+  type:
+    | "book-detected"
+    | "book-title"
+    | "book-type"
+    | "book-description"
+    | "error"
+    | "completed";
   data: Partial<BookDetectionDto>;
 };

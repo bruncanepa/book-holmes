@@ -10,16 +10,22 @@ import { useToast } from "@/hooks/use-toast";
 import { useHistoryStore } from "@/hooks/use-history-store";
 import { HistoryPanel } from "./history-panel";
 import { UploaderCard } from "./uploader-card";
-import { AnalysisResult, HistoryItem, UploadState } from "@/lib/types";
+import {
+  AnalysisResult,
+  BookDetectionEvent,
+  HistoryItem,
+  UploadState,
+} from "@/lib/types";
 import { loadFile } from "@/lib/file";
 import { useBookDetectionEvents } from "@/hooks/use-book-detection-events";
 import { useAuth } from "@/hooks/use-auth";
+import { useUpdatableRef } from "@/hooks/use-updatable-ref";
 
 export function FileUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const imagePreviewRef = useUpdatableRef<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
   );
@@ -29,11 +35,6 @@ export function FileUploader() {
   const { history, isLoading, error, addHistoryItem, removeHistoryItem } =
     useHistoryStore();
   const { apiKey } = useAuth();
-
-  useBookDetectionEvents((event) =>
-    // @ts-ignore: Type '{ data: BookDetectionEvent; }' is not assignable to type 'BookDetectionEvent'.
-    setAnalysisResult((prev) => ({ ...prev, ...event.data }))
-  );
 
   const isMobile =
     typeof window !== "undefined" ? window.innerWidth < 768 : false;
@@ -49,6 +50,118 @@ export function FileUploader() {
       });
     }
   }, [error, toast]);
+
+  const handleError = (error: Error | BookDetectionEvent) => {
+    let errorMessage = "";
+    if (error instanceof Error) {
+      errorMessage = error.message || "An unexpected error occurred";
+    } else {
+      const { data } = error;
+      errorMessage = data.error || "An unexpected error occurred";
+      if (imagePreviewRef.current) {
+        const historyItem: HistoryItem = {
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          imageUrl: imagePreviewRef.current,
+          state: "error",
+          error: errorMessage,
+        };
+
+        addHistoryItem(historyItem);
+      }
+    }
+
+    setErrorMessage(errorMessage);
+    setUploadState("error");
+    toast({
+      variant: "destructive",
+      title: "Analysis failed",
+      description: errorMessage,
+    });
+  };
+
+  const handleResponseEvent = (event: BookDetectionEvent) => {
+    switch (event.type) {
+      case "error":
+        handleError(event);
+        break;
+      case "completed": {
+        const { data } = event;
+        // @ts-ignore
+        setAnalysisResult((c) => ({ ...c, ...data }));
+        const hasBookInfo = data.isBook && (data.title || data.type);
+        const isComplete =
+          !data.error && data.isBook && data.title && data.type && data.text;
+        const isPartial = hasBookInfo && !isComplete;
+
+        let state: "success" | "partial-success" | "error";
+        if (isComplete) {
+          state = "success";
+        } else if (isPartial) {
+          state = "partial-success";
+        } else {
+          state = "error";
+        }
+
+        if (imagePreviewRef.current) {
+          const historyItem: HistoryItem = {
+            id: Date.now().toString(),
+            timestamp: new Date(),
+            imageUrl: imagePreviewRef.current,
+            state: state,
+            result: hasBookInfo
+              ? {
+                  title: data.title || "Unknown Title",
+                  text: data.text || "",
+                  type:
+                    (data.type as "fiction" | "non-fiction") || "non-fiction",
+                  description: data.description || "",
+                }
+              : undefined,
+            error: data.error,
+          };
+
+          // Add to IndexedDB history store
+          addHistoryItem(historyItem);
+        }
+
+        setUploadState(state);
+
+        if (isComplete) {
+          toast({
+            title: "Analysis complete",
+            description: `Successfully analyzed "${data.title}"`,
+          });
+        } else if (isPartial) {
+          toast({
+            title: "Partial analysis",
+            description:
+              data.error || "Some information could not be retrieved",
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Analysis failed",
+            description: data.error || "Could not complete analysis",
+          });
+        }
+
+        // Switch to history tab on mobile after completion
+        if (isMobile) {
+          setTimeout(() => {
+            setActiveTab("history");
+          }, 1500);
+        }
+        break;
+      }
+      default:
+        // @ts-ignore
+        setAnalysisResult((c) => ({ ...c, ...event.data }));
+        break;
+    }
+  };
+
+  const { clientId } = useBookDetectionEvents(handleResponseEvent);
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -93,7 +206,7 @@ export function FileUploader() {
     let previewUrl = null;
     if (file.type.startsWith("image/")) {
       previewUrl = await loadFile(file);
-      setImagePreview(previewUrl);
+      imagePreviewRef.update(previewUrl);
     }
 
     const formData = new FormData();
@@ -118,128 +231,21 @@ export function FileUploader() {
         setUploadState("processing");
 
         // Make actual API request to backend
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
-          method: "POST",
-          body: formData,
-          headers: { Authorization: apiKey },
-        })
+        fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/analyze?clientId=${clientId}`,
+          {
+            method: "POST",
+            body: formData,
+            headers: { Authorization: apiKey },
+          }
+        )
           .then(async (response) => {
             const data = await response.json();
-
-            if (data.isBook !== undefined) {
-              return data;
-            } else if (!response.ok) {
+            if (!response.ok) {
               throw new Error(data.error || "Failed to analyze image");
             }
-
-            return data;
           })
-          .then((result) => {
-            console.log("API response:", result);
-
-            if (result.error) {
-              setErrorMessage(result.error);
-            }
-
-            setAnalysisResult(result);
-
-            const hasBookInfo = result.isBook && (result.title || result.type);
-            const isComplete =
-              !result.error &&
-              result.isBook &&
-              result.title &&
-              result.type &&
-              result.text;
-            const isPartial = hasBookInfo && !isComplete;
-
-            let state: "success" | "partial-success" | "error";
-            if (isComplete) {
-              state = "success";
-            } else if (isPartial) {
-              state = "partial-success";
-            } else {
-              state = "error";
-            }
-
-            if (previewUrl) {
-              const historyItem: HistoryItem = {
-                id: Date.now().toString(),
-                timestamp: new Date(),
-                imageUrl: previewUrl,
-                state: state,
-                result: hasBookInfo
-                  ? {
-                      title: result.title || "Unknown Title",
-                      text: result.text || "",
-                      type:
-                        (result.type as "fiction" | "non-fiction") ||
-                        "non-fiction",
-                      description: result.description || "",
-                    }
-                  : undefined,
-                error: result.error,
-              };
-
-              // Add to IndexedDB history store
-              addHistoryItem(historyItem);
-            }
-
-            setUploadState(state);
-
-            if (isComplete) {
-              toast({
-                title: "Analysis complete",
-                description: `Successfully analyzed "${result.title}"`,
-              });
-            } else if (isPartial) {
-              toast({
-                title: "Partial analysis",
-                description:
-                  result.error || "Some information could not be retrieved",
-              });
-            } else {
-              toast({
-                variant: "destructive",
-                title: "Analysis failed",
-                description: result.error || "Could not complete analysis",
-              });
-            }
-
-            // Switch to history tab on mobile after completion
-            if (isMobile) {
-              setTimeout(() => {
-                setActiveTab("history");
-              }, 1500);
-            }
-          })
-          .catch((error) => {
-            console.error("Error:", error);
-
-            const errorMessage =
-              error.message || "An unexpected error occurred";
-
-            setErrorMessage(errorMessage);
-
-            if (previewUrl) {
-              const historyItem: HistoryItem = {
-                id: Date.now().toString(),
-                timestamp: new Date(),
-                imageUrl: previewUrl,
-                state: "error",
-                error: errorMessage,
-              };
-
-              addHistoryItem(historyItem);
-            }
-
-            setUploadState("error");
-
-            toast({
-              variant: "destructive",
-              title: "Analysis failed",
-              description: errorMessage,
-            });
-          });
+          .catch(handleError);
       }, 1000);
     } catch (error) {
       console.error("Error:", error);
@@ -252,7 +258,7 @@ export function FileUploader() {
     setUploadState("idle");
     setProgress(0);
     // Don't revoke the URL as it might be used in history
-    setImagePreview(null);
+    imagePreviewRef.update(null);
     setAnalysisResult(null);
     setErrorMessage(null);
   };
@@ -280,7 +286,7 @@ export function FileUploader() {
               handleDrag={handleDrag}
               handleDrop={handleDrop}
               handleChange={handleChange}
-              imagePreview={imagePreview}
+              imagePreview={imagePreviewRef.current}
               progress={progress}
               analysisResult={analysisResult}
               errorMessage={errorMessage}
@@ -306,7 +312,7 @@ export function FileUploader() {
             handleDrag={handleDrag}
             handleDrop={handleDrop}
             handleChange={handleChange}
-            imagePreview={imagePreview}
+            imagePreview={imagePreviewRef.current}
             progress={progress}
             analysisResult={analysisResult}
             errorMessage={errorMessage}

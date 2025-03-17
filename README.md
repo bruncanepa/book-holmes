@@ -127,6 +127,7 @@ sequenceDiagram
     participant GoogleBooks
 
     Client->>Backend: Upload image
+    Backend-->>Client: Received
     Backend->>GoogleVision: Detect objects
     GoogleVision-->>Backend: Confirm book presence
     Backend->>Client: SSE: book-detected
@@ -151,14 +152,14 @@ sequenceDiagram
     Backend->>Puppeteer: Navigate section link
 
     alt type == fiction
-        Puppeteer->>Puppeteer: Scroll to page 2
+      Puppeteer->>Puppeteer: Scroll to page 2
     end
     
     Puppeteer-->>Backend: Send page screenshot
     Backend->>GoogleVision: Page screenshot
     GoogleVision-->>Backend: Page content
 
-    Backend->>Client: Analysis complete
+    Backend->>Client: SSE: complete
 </details>
 
 

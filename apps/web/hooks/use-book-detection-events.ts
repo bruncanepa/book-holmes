@@ -1,3 +1,4 @@
+import { v4 as uuid } from "uuid";
 import { useEffect, useState } from "react";
 import { BookDetectionEvent } from "@/lib/types";
 
@@ -6,16 +7,16 @@ type EventCallback = (event: BookDetectionEvent) => void;
 export function useBookDetectionEvents(onEvent: EventCallback) {
   const [connected, setConnected] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [clientId] = useState<string>(() => uuid());
 
   useEffect(() => {
     const eventSource = new EventSource(
-      `${process.env.NEXT_PUBLIC_API_URL}/events`
+      `${process.env.NEXT_PUBLIC_API_URL}/events/${clientId}`
     );
 
     eventSource.onopen = () => {
       setConnected(true);
       setError(null);
-      console.log("event source opened");
     };
 
     eventSource.onerror = (error) => {
@@ -26,7 +27,6 @@ export function useBookDetectionEvents(onEvent: EventCallback) {
 
     eventSource.onmessage = (event) => {
       try {
-        console.log("received event", event.data);
         const data = JSON.parse(event.data) as BookDetectionEvent;
         onEvent(data);
       } catch (error) {
@@ -38,7 +38,7 @@ export function useBookDetectionEvents(onEvent: EventCallback) {
       eventSource.close();
       setConnected(false);
     };
-  }, []);
+  }, [clientId]);
 
-  return { connected, error };
+  return { connected, error, clientId };
 }

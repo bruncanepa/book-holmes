@@ -11,6 +11,8 @@ export type AnalysisResult = {
   text: string;
   description: string;
   type: "fiction" | "non-fiction";
+  error?: string;
+  isBook?: boolean;
 };
 
 export type HistoryItem = {
@@ -27,6 +29,12 @@ export type ErrorResponse = {
 };
 
 export type BookDetectionEvent = {
-  type: "book-detected" | "title-extracted" | "book-info";
+  type:
+    | "book-detected"
+    | "book-title"
+    | "book-type"
+    | "book-description"
+    | "error"
+    | "completed";
   data: Partial<AnalysisResult>;
 };
