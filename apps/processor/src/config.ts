@@ -32,7 +32,7 @@ const config: Config = {
     googleBooks: process.env.MOCK_GOOGLE_BOOKS === "true",
   },
   puppeteer: {
-    headless: process.env.PUPPETEER_HEADLESS === "true",
+    headless: process.env.PUPPETEER_HEADLESS === "false",
   },
 };
 
