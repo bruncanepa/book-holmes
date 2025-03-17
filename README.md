@@ -291,21 +291,6 @@ Scaling this to millions of users would require a different architecture:
   - Use API Gateway Management API and a database for handling Socket connections with our Lambdas.
   - Do polling instead of SSE. Fetch every ~5 seconds the job status.
 
-
-## Environment Variables
-
-### Backend
-```env
-PORT=3002
-GOOGLE_VISION_API_KEY=your_vision_api_key
-GOOGLE_GEMINI_API_KEY=your_gemini_api_key
-```
-
-### Frontend
-```env
-NEXT_PUBLIC_API_URL=http://localhost:3002
-```
-
 ## Getting Started
 
 1. Clone the repository
