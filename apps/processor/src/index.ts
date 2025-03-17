@@ -11,14 +11,7 @@ import { BookDetectionEvent } from "./dtos/book-detection.dto";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(
-  "/api/*",
-  rateLimit({
-    windowMs: 60 * 1000, // 1 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-  })
-);
-app.use(express.json());
+app.set("trust proxy", 1); // Trust the first proxy hop
 app.use(
   cors({
     origin: process.env.NODE_ENV === "production" ? config.web.url : "*",
@@ -27,13 +20,14 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   })
 );
+app.use(express.json());
 
 const PORT = process.env.PORT || 3002;
 
 // Store active SSE clients
 const clients = new Map<string, { send: (data: string) => void }>();
 
-// SSE endpoint
+// SSE endpoint - no auth required
 app.get("/api/events/:id", (req: express.Request, res: express.Response) => {
   const { id: clientId } = req.params;
   if (!clientId) return res.status(400).send({ error: "Invalid client ID" });
@@ -67,6 +61,14 @@ app.get("/api/events/:id", (req: express.Request, res: express.Response) => {
   });
 });
 
+app.use(
+  "/api/*",
+  rateLimit({
+    windowMs: 60 * 1000, // 1 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+  })
+);
+
 // Helper function to send updates to all clients
 const sendUpdate = (clientId: string) => (event: BookDetectionEvent) => {
   const data = JSON.stringify(event);
@@ -87,7 +89,7 @@ const authMiddleware = (
 ) => {
   const authKey = req.header("Authorization");
   if (!authKey || !config.auth.apiKeys.includes(authKey)) {
-    return res.status(401).send({ error: "Unauthorized" });
+    return res.status(401).send({ error: "Unauthorized", reason: "no auth" });
   }
   next();
 };

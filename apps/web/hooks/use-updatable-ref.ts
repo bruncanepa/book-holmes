@@ -1,13 +1,16 @@
-import { useRef, useState } from "react";
+import { useRef, RefObject } from "react";
+import { useForceUpdate } from "./use-force-update";
 
-export const useUpdatableRef = <T>(initialValue: T) => {
+export const useUpdatableRef = <T>(
+  initialValue: T
+): [RefObject<T>, (v: T) => any] => {
+  const forceUpdate = useForceUpdate();
   const ref = useRef<T>(initialValue);
-  const [, setState] = useState(0);
-  return {
-    current: ref.current,
-    update: (value: T) => {
-      ref.current = value;
-      setState((s) => s + 1);
-    },
+
+  const updateRef = (val: T) => {
+    ref.current = val;
+    forceUpdate();
   };
+
+  return [ref, updateRef];
 };

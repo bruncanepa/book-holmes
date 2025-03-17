@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,7 +25,7 @@ export function FileUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
-  const imagePreviewRef = useUpdatableRef<string | null>(null);
+  const [imagePreviewRef, updateImagePreviewRef] = useUpdatableRef<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
   );
@@ -58,17 +58,15 @@ export function FileUploader() {
     } else {
       const { data } = error;
       errorMessage = data.error || "An unexpected error occurred";
-      if (imagePreviewRef.current) {
-        const historyItem: HistoryItem = {
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          imageUrl: imagePreviewRef.current,
-          state: "error",
-          error: errorMessage,
-        };
+      const historyItem: HistoryItem = {
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        imageUrl: imagePreviewRef.current || "",
+        state: "error",
+        error: errorMessage,
+      };
 
-        addHistoryItem(historyItem);
-      }
+      addHistoryItem(historyItem);
     }
 
     setErrorMessage(errorMessage);
@@ -103,28 +101,23 @@ export function FileUploader() {
           state = "error";
         }
 
-        if (imagePreviewRef.current) {
-          const historyItem: HistoryItem = {
-            id: Date.now().toString(),
-            timestamp: new Date(),
-            imageUrl: imagePreviewRef.current,
-            state: state,
-            result: hasBookInfo
-              ? {
-                  title: data.title || "Unknown Title",
-                  text: data.text || "",
-                  type:
-                    (data.type as "fiction" | "non-fiction") || "non-fiction",
-                  description: data.description || "",
-                }
-              : undefined,
-            error: data.error,
-          };
+        const historyItem: HistoryItem = {
+          id: Date.now().toString(),
+          timestamp: new Date(),
+          imageUrl: imagePreviewRef.current || "",
+          state: state,
+          result: hasBookInfo
+            ? {
+                title: data.title || "Unknown Title",
+                text: data.text || "",
+                type: (data.type as "fiction" | "non-fiction") || "non-fiction",
+                description: data.description || "",
+              }
+            : undefined,
+          error: data.error,
+        };
 
-          // Add to IndexedDB history store
-          addHistoryItem(historyItem);
-        }
-
+        addHistoryItem(historyItem);
         setUploadState(state);
 
         if (isComplete) {
@@ -206,7 +199,7 @@ export function FileUploader() {
     let previewUrl = null;
     if (file.type.startsWith("image/")) {
       previewUrl = await loadFile(file);
-      imagePreviewRef.update(previewUrl);
+      updateImagePreviewRef(previewUrl);
     }
 
     const formData = new FormData();
@@ -258,7 +251,7 @@ export function FileUploader() {
     setUploadState("idle");
     setProgress(0);
     // Don't revoke the URL as it might be used in history
-    imagePreviewRef.update(null);
+    updateImagePreviewRef(null);
     setAnalysisResult(null);
     setErrorMessage(null);
   };
