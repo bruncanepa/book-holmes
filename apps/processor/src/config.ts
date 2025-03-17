@@ -5,6 +5,7 @@ dotenv.config({
 });
 
 type Config = {
+  auth: { apiKeys: string[] };
   google: { apiKey: string };
   googleGemini: { apiKey: string };
   mock: {
@@ -17,6 +18,9 @@ type Config = {
 };
 
 const config: Config = {
+  auth: {
+    apiKeys: process.env.AUTH_API_KEY?.split(",") || [],
+  },
   google: {
     apiKey: process.env.GOOGLE_API_KEY || "",
   },

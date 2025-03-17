@@ -13,6 +13,7 @@ import { UploaderCard } from "./uploader-card";
 import { AnalysisResult, HistoryItem, UploadState } from "@/lib/types";
 import { loadFile } from "@/lib/file";
 import { useBookDetectionEvents } from "@/hooks/use-book-detection-events";
+import { useAuth } from "@/hooks/use-auth";
 
 export function FileUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
@@ -27,6 +28,7 @@ export function FileUploader() {
   const { toast } = useToast();
   const { history, isLoading, error, addHistoryItem, removeHistoryItem } =
     useHistoryStore();
+  const { apiKey } = useAuth();
 
   useBookDetectionEvents((event) =>
     // @ts-ignore: Type '{ data: BookDetectionEvent; }' is not assignable to type 'BookDetectionEvent'.
@@ -78,6 +80,12 @@ export function FileUploader() {
   };
 
   const handleFiles = async (files: FileList) => {
+    if (!apiKey) {
+      setErrorMessage("You need an API Key to use this platform");
+      setUploadState("error");
+      return;
+    }
+
     setUploadState("uploading");
     setErrorMessage(null);
 
@@ -113,6 +121,7 @@ export function FileUploader() {
         fetch(`${process.env.NEXT_PUBLIC_API_URL}/analyze`, {
           method: "POST",
           body: formData,
+          headers: { Authorization: apiKey },
         })
           .then(async (response) => {
             const data = await response.json();

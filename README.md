@@ -288,8 +288,9 @@ Scaling this to millions of users would require a different architecture:
 - Add more APIs as back up where book content is extracted from. We are 100% depending on GoogleBooks now.
 - Server-Sent Events connections are being saved in memory. Some options to consider: 
   - Use EC2 with persistance NodeJS instances that handle SSE connections. Lambda use this to forward events. 
-  - Use API Gateway Management API and a database for handling Socket connections with our Lambdas.
-  - Do polling instead of SSE. Fetch every ~5 seconds the job status.
+  - Use API Gateway Management API and a database for handling WebSocket connections with our Lambdas.
+  - Do polling instead of SSE or WebSocket. Fetch every ~5 seconds the job status.
+- Rate limiting: use an external database for handling it, like Redis.
 
 ## Getting Started
 

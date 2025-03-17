@@ -1,4 +1,4 @@
-import "./config";
+import config from "./config";
 
 import express from "express";
 import rateLimit from "express-rate-limit";
@@ -20,7 +20,7 @@ app.use(
   })
 );
 app.use(express.json());
-app.use((req, res, next) => {
+app.use((_, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
@@ -68,6 +68,14 @@ const sendUpdate = (event: BookDetectionEvent) => {
   const data = JSON.stringify(event);
   clients.forEach((client) => client.send(data));
 };
+
+app.use((req, res, next) => {
+  const authKey = req.header("Authorization");
+  if (!authKey || !config.auth.apiKeys.includes(authKey)) {
+    return res.status(401).send({ error: "Unauthorized" });
+  }
+  next();
+});
 
 app.post(
   "/api/analyze",
