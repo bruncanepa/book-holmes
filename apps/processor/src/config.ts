@@ -15,6 +15,7 @@ type Config = {
     googleBooks: boolean;
   };
   puppeteer: { headless: boolean };
+  web: { url: string };
 };
 
 const config: Config = {
@@ -37,6 +38,9 @@ const config: Config = {
   },
   puppeteer: {
     headless: process.env.PUPPETEER_HEADLESS === "false",
+  },
+  web: {
+    url: process.env.WEB_URL || "",
   },
 };
 

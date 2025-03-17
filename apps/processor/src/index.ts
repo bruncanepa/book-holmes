@@ -1,8 +1,8 @@
 import config from "./config";
 
 import express from "express";
-import rateLimit from "express-rate-limit";
 import cors from "cors";
+import rateLimit from "express-rate-limit";
 import multer from "multer";
 import { writeFileSync } from "./lib/file";
 import { BookDetectorService } from "./services/book-detector.service";
@@ -11,7 +11,6 @@ import { BookDetectionEvent } from "./dtos/book-detection.dto";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.use(cors());
 app.use(
   "/api/*",
   rateLimit({
@@ -20,14 +19,12 @@ app.use(
   })
 );
 app.use(express.json());
-app.use((_, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header(
-    "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
-  );
-  next();
-});
+app.use(
+  cors({
+    origin: process.env.NODE_ENV === "production" ? config.web.url : "*",
+    credentials: true,
+  })
+);
 
 const PORT = process.env.PORT || 3002;
 
@@ -69,7 +66,7 @@ const sendUpdate = (event: BookDetectionEvent) => {
   clients.forEach((client) => client.send(data));
 };
 
-app.use((req, res, next) => {
+app.use("/api/analyze", (req, res, next) => {
   const authKey = req.header("Authorization");
   if (!authKey || !config.auth.apiKeys.includes(authKey)) {
     return res.status(401).send({ error: "Unauthorized" });
