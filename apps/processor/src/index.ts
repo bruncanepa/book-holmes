@@ -1,6 +1,7 @@
 import "./config";
 
 import express from "express";
+import rateLimit from "express-rate-limit";
 import cors from "cors";
 import multer from "multer";
 import { writeFileSync } from "./lib/file";
@@ -11,6 +12,13 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(cors());
+app.use(
+  "/api/*",
+  rateLimit({
+    windowMs: 60 * 1000, // 1 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+  })
+);
 app.use(express.json());
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
