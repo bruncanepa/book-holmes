@@ -76,7 +76,7 @@ export class Scraper {
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
       );
       await page.goto(finalUrl, { waitUntil: "load" });
-      await wait(500);
+      await wait(200);
 
       const links = await this.getTOCLinks(page);
       if (!links.length) throw new Error("No links found");
@@ -92,7 +92,7 @@ export class Scraper {
 
       const firstSectionLink = links[index]!.href;
       await page.goto(firstSectionLink, { waitUntil: "load" });
-      await wait(500);
+      await wait(200);
 
       const clip: PageClipConfig = {
         x: 275,
@@ -112,7 +112,7 @@ export class Scraper {
         }
         case "2": {
           await this.scroll(page, 2200);
-          await wait(500);
+          await wait(100);
           screenshot = (await page.screenshot({
             encoding: "base64",
             clip,

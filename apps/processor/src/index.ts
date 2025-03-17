@@ -1,7 +1,6 @@
 import config from "./config";
 
 import express from "express";
-import cors from "cors";
 import rateLimit from "express-rate-limit";
 import multer from "multer";
 import { writeFileSync } from "./lib/file";
@@ -12,14 +11,18 @@ const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
 app.set("trust proxy", 1); // Trust the first proxy hop
-app.use(
-  cors({
-    origin: process.env.NODE_ENV === "production" ? config.web.url : "*",
-    credentials: true,
-    allowedHeaders: ["Authorization"],
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  })
-);
+app.use((_, res, next) => {
+  res.header(
+    "Access-Control-Allow-Origin",
+    process.env.NODE_ENV === "production" ? config.web.url : "*"
+  );
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+  );
+  res.header("Access-Control-Allow-Credentials", "true");
+  next();
+});
 app.use(express.json());
 
 const PORT = process.env.PORT || 3002;
@@ -61,13 +64,13 @@ app.get("/api/events/:id", (req: express.Request, res: express.Response) => {
   });
 });
 
-app.use(
-  "/api/*",
-  rateLimit({
-    windowMs: 60 * 1000, // 1 minutes
-    max: 100, // limit each IP to 100 requests per windowMs
-  })
-);
+// app.use(
+//   "/api/*",
+//   rateLimit({
+//     windowMs: 60 * 1000, // 1 minutes
+//     max: 100, // limit each IP to 100 requests per windowMs
+//   })
+// );
 
 // Helper function to send updates to all clients
 const sendUpdate = (clientId: string) => (event: BookDetectionEvent) => {
@@ -106,30 +109,22 @@ app.post(
     if (!clientId) {
       return res.status(400).json({ error: "Missing client ID" });
     }
+    req.setTimeout(1 * 60 * 1000, () => {
+      res.status(408).json({ error: "Request timed out" });
+    });
 
     try {
       const file = req.file;
-      (async () => {
-        const eventHandler = sendUpdate(clientId as string);
-        try {
-          const detector = new BookDetectorService(eventHandler);
-          const result = await detector.detectBook(file.buffer);
-          eventHandler({ type: "completed", data: result });
-          writeFileSync("result.json", JSON.stringify(result, null, 2));
-        } catch (error) {
-          console.error("Error processing image:", error);
-          eventHandler({
-            type: "error",
-            data: {
-              error:
-                error instanceof Error
-                  ? error.message
-                  : "Failed to process image",
-            },
-          });
-        }
-      })();
-
+      const eventHandler = sendUpdate(clientId as string);
+      const detector = new BookDetectorService(eventHandler);
+      console.log("Starting image processing...");
+      const result = await detector.detectBook(file.buffer);
+      console.log("finished image processing...");
+      eventHandler({
+        type: result.text ? "completed" : "error",
+        data: result,
+      });
+      writeFileSync("result.json", JSON.stringify(result, null, 2));
       res.status(200).json({ success: true });
     } catch (error) {
       res.status(500).json({

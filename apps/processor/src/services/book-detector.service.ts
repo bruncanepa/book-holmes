@@ -105,13 +105,17 @@ export class BookDetectorService {
   async detectBook(imageBuffer: Buffer): Promise<BookDetectionDto> {
     const data: BookDetectionDto = {};
     try {
+      console.log("Checking if object is book...");
       await this.checkIfObjectIsBook(imageBuffer);
+      console.log("Object is book");
       data.isBook = true;
       this.emitEvent({ type: "book-detected", data: { isBook: true } });
 
+      console.log("Extracting text from image...");
       data.title = await this.extractTextFromImage(imageBuffer);
       this.emitEvent({ type: "book-title", data: { title: data.title } });
 
+      console.log("Getting book info...");
       const { isFiction, previewLink, book } = await this.getBookInfo(
         data.title
       );
@@ -125,7 +129,7 @@ export class BookDetectorService {
           data: { description: data.description },
         });
       }
-
+      console.log("Getting book content...");
       if (previewLink) {
         const { content } = await new Scraper().scrapeBookContent(
           previewLink,
@@ -133,7 +137,7 @@ export class BookDetectorService {
         );
         data.text = content;
       }
-
+      console.log("Getting book content...", data.text);
       if (!data.text) throw new Error("No book content found");
     } catch (error) {
       console.error("Error processing image:", error);

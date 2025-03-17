@@ -16,10 +16,10 @@ A modern web application that analyzes book cover images to extract information 
 
 ## Demo
 
-<video width="560" height="315" controls>
-  <source src="docs/demo.mov" type="video/mp4">
-  Your browser does not support the video tag.
-</video>
+
+
+https://github.com/user-attachments/assets/05354567-96ce-4957-8eea-d6f71b85439c
+
 
 ## Decision Records
 
