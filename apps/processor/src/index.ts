@@ -124,8 +124,8 @@ app.post(
         type: result.text ? "completed" : "error",
         data: result,
       });
-      writeFileSync("result.json", JSON.stringify(result, null, 2));
-      res.status(200).json({ success: true });
+      writeFileSync("result.json", JSON.stringify(result));
+      res.status(200).json({ success: true, data: result });
     } catch (error) {
       res.status(500).json({
         error:
@@ -136,5 +136,7 @@ app.post(
 );
 
 app.listen(PORT, () => {
-  console.log(`Processor service running on port ${PORT}`);
+  console.log(
+    `Processor service running on port ${PORT} ${JSON.stringify(config)}`
+  );
 });

@@ -14,19 +14,27 @@ export class GoogleVision {
   }
 
   async detectObject(imageBuffer: Buffer) {
-    const [objectResult] = config.mock.googleVisionObjectLocalization
-      ? (JSON.parse(
-          readFileSync("objectLocalization.json", "utf-8")
-        ) as google.cloud.vision.v1.IAnnotateImageResponse[])
-      : (await this.vision.objectLocalization?.({
+    let objectResult:
+      | google.cloud.vision.v1.IAnnotateImageResponse
+      | undefined = undefined;
+    if (config.mock.googleVisionTextDetection) {
+      try {
+        const fileContent = readFileSync(`objectLocalization.json`, "utf-8");
+        if (fileContent) {
+          [objectResult] =
+            (JSON.parse(
+              fileContent
+            ) as google.cloud.vision.v1.IAnnotateImageResponse[]) || [];
+        }
+      } catch (error) {}
+    }
+
+    if (!objectResult) {
+      [objectResult] =
+        (await this.vision.objectLocalization?.({
           image: { content: imageBuffer },
         })) || [];
-
-    if (!config.mock.googleVisionObjectLocalization) {
-      writeFileSync(
-        "objectLocalization.json",
-        JSON.stringify([objectResult], null, 2)
-      );
+      writeFileSync("objectLocalization.json", JSON.stringify([objectResult]));
     }
 
     const objects = objectResult?.localizedObjectAnnotations || [];
@@ -53,13 +61,7 @@ export class GoogleVision {
         (await this.vision.textDetection({
           image: { content: imageBuffer },
         })) || [];
-    }
-
-    if (!config.mock.googleVisionTextDetection) {
-      writeFileSync(
-        `textDetection-${id}.json`,
-        JSON.stringify([textResult], null, 2)
-      );
+      writeFileSync(`textDetection-${id}.json`, JSON.stringify([textResult]));
     }
 
     const textAnnotations =
