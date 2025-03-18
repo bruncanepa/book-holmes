@@ -154,11 +154,7 @@ export function UploaderCard({
                     </Badge>
                   )}
                 </div>
-                {analysisResult.text && (
-                  <p className="text-sm text-gray-600 mb-4 max-h-24 overflow-y-auto">
-                    {analysisResult.text}
-                  </p>
-                )}
+                <BookContent result={analysisResult} />
                 <Alert className="mb-4 border-yellow-500 bg-yellow-50 text-yellow-800">
                   <AlertCircle className="h-4 w-4 text-yellow-600" />
                   <AlertDescription>

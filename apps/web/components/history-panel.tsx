@@ -22,7 +22,7 @@ export function HistoryPanel({
 
   const toggleExpand = (id: string) => {
     const item = history.find((item) => item.id === id);
-    if (!item || !item.result?.text) return;
+    if (!showBookContent(item?.result)) return;
     if (expandedItem === id) {
       setExpandedItem(null);
     } else {
@@ -124,7 +124,7 @@ export function HistoryPanel({
                         </span>
                       </div>
                       <div className="flex items-center">
-                        {item.result?.text &&
+                        {showBookContent(item.result) &&
                           (expandedItem === item.id ? (
                             <ChevronUp className="h-5 w-5 text-gray-500 ml-1" />
                           ) : (
