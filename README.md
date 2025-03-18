@@ -81,6 +81,7 @@ https://github.com/user-attachments/assets/05354567-96ce-4957-8eea-d6f71b85439c
 
 - Using free tiers for all third party services. Is possible that we get rate limited.
 - Scraping flow is not 100% reliable. We depend on the book having a preview available for public access.
+- Scraping flow needs anti bot tech (e.g. user agent rotation, CAPTCHA solvers, proxy servers)
 - Google Vision free tier doesn't always detect books. Sometimes it thinks it's another object or sometimes it doesn't detecte anything.
 - Implemented architecture not suitable for a real word application. See more in [Real World Scenario](#real-world-scenario).
 
