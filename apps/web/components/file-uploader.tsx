@@ -25,7 +25,9 @@ export function FileUploader() {
   const [uploadState, setUploadState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
-  const [imagePreviewRef, updateImagePreviewRef] = useUpdatableRef<string | null>(null);
+  const [imagePreviewRef, updateImagePreviewRef] = useUpdatableRef<
+    string | null
+  >(null);
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
     null
   );
@@ -38,6 +40,60 @@ export function FileUploader() {
 
   const isMobile =
     typeof window !== "undefined" ? window.innerWidth < 768 : false;
+
+  const createHistoryItem = (data: BookDetectionEvent["data"]) => {
+    const hasBookInfo = data.isBook && (data.title || data.type);
+    const isComplete =
+      !data.error && data.isBook && data.title && data.type && data.text;
+    const isPartial = hasBookInfo && !isComplete;
+
+    let state: "success" | "partial-success" | "error";
+    if (isComplete) {
+      state = "success";
+    } else if (isPartial) {
+      state = "partial-success";
+    } else {
+      state = "error";
+    }
+
+    const historyItem: HistoryItem = {
+      id: Date.now().toString(),
+      timestamp: new Date(),
+      imageUrl: imagePreviewRef.current || "",
+      state: state,
+      result: hasBookInfo
+        ? {
+            title: data.title || "Unknown Title",
+            text: data.text || "",
+            type: (data.type as "fiction" | "non-fiction") || "non-fiction",
+            description: data.description || "",
+          }
+        : undefined,
+      error: data.error,
+    };
+    addHistoryItem(historyItem);
+
+    setUploadState(state);
+
+    if (isComplete) {
+      toast({
+        title: "Analysis complete",
+        description: `Successfully analyzed "${data.title}"`,
+      });
+    } else if (isPartial) {
+      toast({
+        title: "Partial analysis",
+        description: data.error || "Some information could not be retrieved",
+      });
+    } else {
+      setErrorMessage(data.error || "Could not complete analysis");
+      toast({
+        variant: "destructive",
+        title: "Analysis failed",
+        description: data.error || "Could not complete analysis",
+      });
+    }
+  };
 
   useEffect(() => {
     if (error) {
@@ -55,27 +111,12 @@ export function FileUploader() {
     let errorMessage = "";
     if (error instanceof Error) {
       errorMessage = error.message || "An unexpected error occurred";
+      createHistoryItem({ error: errorMessage });
     } else {
       const { data } = error;
       errorMessage = data.error || "An unexpected error occurred";
-      const historyItem: HistoryItem = {
-        id: Date.now().toString(),
-        timestamp: new Date(),
-        imageUrl: imagePreviewRef.current || "",
-        state: "error",
-        error: errorMessage,
-      };
-
-      addHistoryItem(historyItem);
+      createHistoryItem(data);
     }
-
-    setErrorMessage(errorMessage);
-    setUploadState("error");
-    toast({
-      variant: "destructive",
-      title: "Analysis failed",
-      description: errorMessage,
-    });
   };
 
   const handleResponseEvent = (event: BookDetectionEvent) => {
@@ -87,58 +128,7 @@ export function FileUploader() {
         const { data } = event;
         // @ts-ignore
         setAnalysisResult((c) => ({ ...c, ...data }));
-        const hasBookInfo = data.isBook && (data.title || data.type);
-        const isComplete =
-          !data.error && data.isBook && data.title && data.type && data.text;
-        const isPartial = hasBookInfo && !isComplete;
-
-        let state: "success" | "partial-success" | "error";
-        if (isComplete) {
-          state = "success";
-        } else if (isPartial) {
-          state = "partial-success";
-        } else {
-          state = "error";
-        }
-
-        const historyItem: HistoryItem = {
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          imageUrl: imagePreviewRef.current || "",
-          state: state,
-          result: hasBookInfo
-            ? {
-                title: data.title || "Unknown Title",
-                text: data.text || "",
-                type: (data.type as "fiction" | "non-fiction") || "non-fiction",
-                description: data.description || "",
-              }
-            : undefined,
-          error: data.error,
-        };
-
-        addHistoryItem(historyItem);
-        setUploadState(state);
-
-        if (isComplete) {
-          toast({
-            title: "Analysis complete",
-            description: `Successfully analyzed "${data.title}"`,
-          });
-        } else if (isPartial) {
-          toast({
-            title: "Partial analysis",
-            description:
-              data.error || "Some information could not be retrieved",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Analysis failed",
-            description: data.error || "Could not complete analysis",
-          });
-        }
-
+        createHistoryItem(data);
         // Switch to history tab on mobile after completion
         if (isMobile) {
           setTimeout(() => {
