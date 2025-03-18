@@ -116,6 +116,8 @@ export function FileUploader() {
       const { data } = error;
       errorMessage = data.error || "An unexpected error occurred";
       createHistoryItem(data);
+      // @ts-ignore
+      setAnalysisResult((c) => ({ ...c, ...data }));
     }
   };
 
@@ -226,6 +228,8 @@ export function FileUploader() {
             const data = await response.json();
             if (!response.ok) {
               throw new Error(data.error || "Failed to analyze image");
+            } else {
+              handleResponseEvent(data);
             }
           })
           .catch(handleError);

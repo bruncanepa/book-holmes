@@ -120,12 +120,16 @@ app.post(
       console.log("Starting image processing...");
       const result = await detector.detectBook(file.buffer);
       console.log("finished image processing...");
+      const event = {
+        type: result.text ? "completed" : "error",
+        data: result,
+      };
       eventHandler({
         type: result.text ? "completed" : "error",
         data: result,
       });
-      writeFileSync("result.json", JSON.stringify(result));
-      res.status(200).json({ success: true, data: result });
+      writeFileSync("result.json", JSON.stringify(event));
+      res.status(200).json(event);
     } catch (error) {
       res.status(500).json({
         error:
