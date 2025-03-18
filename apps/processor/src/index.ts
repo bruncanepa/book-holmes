@@ -10,7 +10,7 @@ import { BookDetectionEvent } from "./dtos/book-detection.dto";
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
 
-app.set("trust proxy", 1); // Trust the first proxy hop
+app.set("trust proxy", 1);
 app.use((_, res, next) => {
   res.header(
     "Access-Control-Allow-Origin",
