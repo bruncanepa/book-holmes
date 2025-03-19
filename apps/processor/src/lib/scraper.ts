@@ -60,7 +60,7 @@ export class Scraper {
     let screenshot = "";
     const browser = await puppeteer.launch({
       headless: config.puppeteer.headless,
-      args: ["--no-sandbox"],
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
     try {
       const urlParams = new URL(url).searchParams;
