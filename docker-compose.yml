@@ -12,9 +12,11 @@ services:
       - NODE_ENV=production
       - PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+      - PUPPETEER_SKIP_DOWNLOAD=true
       - GOOGLE_API_KEY=${GOOGLE_API_KEY}
       - GOOGLE_GEMINI_API_KEY=${GOOGLE_GEMINI_API_KEY}
       - AUTH_API_KEY=${AUTH_API_KEY}
+      - WEB_URL=${WEB_URL}
     restart: unless-stopped
   app:
     image: 'jc21/nginx-proxy-manager:latest'
