@@ -24,10 +24,18 @@ RUN cd ../..
 # Run the build command from root package.json
 RUN pnpm run build
 
+# Create a non-root user
+RUN groupadd -r bruno && useradd -r -g bruno -G audio,video bruno \
+    && chown -R bruno:bruno /home/bruno \
+    && chown -R bruno:bruno /app
+
 # Set environment variables for Puppeteer
 ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
     NODE_ENV=production 
+
+# Switch to non-root user
+USER bruno
 
 # Expose port (Heroku will set PORT env variable)
 EXPOSE ${PORT:-3000}
