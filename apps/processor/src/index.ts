@@ -120,12 +120,16 @@ app.post(
       console.log("Starting image processing...");
       const result = await detector.detectBook(file.buffer);
       console.log("finished image processing...");
+      const event = {
+        type: result.text ? "completed" : "error",
+        data: result,
+      };
       eventHandler({
         type: result.text ? "completed" : "error",
         data: result,
       });
-      writeFileSync("result.json", JSON.stringify(result, null, 2));
-      res.status(200).json({ success: true });
+      writeFileSync("result.json", JSON.stringify(event));
+      res.status(200).json(event);
     } catch (error) {
       res.status(500).json({
         error:
@@ -136,5 +140,7 @@ app.post(
 );
 
 app.listen(PORT, () => {
-  console.log(`Processor service running on port ${PORT}`);
+  console.log(
+    `Processor service running on port ${PORT} ${JSON.stringify(config)}`
+  );
 });

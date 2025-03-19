@@ -13,6 +13,7 @@ type Config = {
     googleVisionTextDetection: boolean;
     googleGemini: boolean;
     googleBooks: boolean;
+    puppeteer: boolean;
   };
   puppeteer: { headless: boolean };
   web: { url: string };
@@ -35,6 +36,7 @@ const config: Config = {
       process.env.MOCK_GOOGLE_VISION_TEXT_DETECTION === "true",
     googleGemini: process.env.MOCK_GOOGLE_GEMINI === "true",
     googleBooks: process.env.MOCK_GOOGLE_BOOKS === "true",
+    puppeteer: process.env.MOCK_PUPPETEER === "true",
   },
   puppeteer: {
     headless: process.env.PUPPETEER_HEADLESS === "false",

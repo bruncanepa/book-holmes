@@ -3,6 +3,8 @@ import { GoogleGemini } from "./google-gemini";
 import { GoogleVision } from "./google-vision";
 import { bookSectionsPrompt as findBookFirstSectionPrompt } from "../prompts";
 import config from "../config";
+import { writeFileSync } from "./file";
+import { readFileSync } from "fs";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -55,7 +57,20 @@ export class Scraper {
     }, height);
   }
 
-  async scrapeBookContent(url: string, pageNumber: "1" | "2") {
+  async scrapeBookContent(
+    url: string,
+    pageNumber: "1" | "2"
+  ): Promise<{ content: string; screenshot: string }> {
+    if (config.mock.puppeteer) {
+      try {
+        const fileContent = readFileSync(`book-content.json`, "utf-8");
+        if (fileContent) {
+          const { content, screenshot } = JSON.parse(fileContent);
+          return { content, screenshot };
+        }
+      } catch (error) {}
+    }
+
     let content = "";
     let screenshot = "";
     const browser = await puppeteer.launch({
@@ -127,6 +142,10 @@ export class Scraper {
       if (!content && !screenshot) throw new Error("No content found for book");
     } finally {
       await browser.close();
+      writeFileSync(
+        "book-content.json",
+        JSON.stringify({ content, screenshot })
+      );
       return { content, screenshot };
     }
   }

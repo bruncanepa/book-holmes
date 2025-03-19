@@ -51,7 +51,7 @@ export class GoogleBooks {
         const url = `https://www.googleapis.com/books/v1/volumes?q=${query}`;
         const response = await axios.get(url);
         data = response.data;
-        writeFileSync("google-books.json", JSON.stringify(data, null, 2));
+        writeFileSync("google-books.json", JSON.stringify(data));
       }
 
       if (!data.items || data.items.length === 0) {
