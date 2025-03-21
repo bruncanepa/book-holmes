@@ -6,7 +6,8 @@ import {
 import { GoogleBooks } from "../lib/google-books";
 import { GoogleGemini } from "../lib/google-gemini";
 import { GoogleVision } from "../lib/google-vision";
-import { Scraper } from "../lib/scraper";
+import { ScraperCloudflare } from "../lib/scraper-cloudflare";
+import { Scraper } from "../lib/scraper-local";
 import { bookTitlePrompt } from "../prompts";
 
 export class BookDetectorService {
@@ -131,7 +132,7 @@ export class BookDetectorService {
       }
       console.log("Getting book content...");
       if (previewLink) {
-        const { content } = await new Scraper().scrapeBookContent(
+        const { content } = await new ScraperCloudflare().scrapeBookContent(
           previewLink,
           isFiction ? "2" : "1"
         );

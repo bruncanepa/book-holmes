@@ -1,7 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import config from "../config";
-import { writeFileSync } from "./file";
-import { readFileSync } from "fs";
+import { writeFileSync, readFileSync } from "./file";
 
 export class GoogleGemini {
   private model: GoogleGenerativeAI;
@@ -12,11 +11,11 @@ export class GoogleGemini {
 
   async chatCompletion(id: string, prompt: string): Promise<string> {
     try {
-      const fileName = `gemini-response-${id}.txt`;
+      const fileName = `mocks/gemini-response-${id}.txt`;
       if (config.mock.googleGemini) {
         let data: string | undefined;
         try {
-          data = readFileSync(fileName, "utf8");
+          data = readFileSync(fileName);
         } catch (error) {}
         if (data) return data;
       }

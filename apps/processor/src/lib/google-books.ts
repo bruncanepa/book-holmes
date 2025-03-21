@@ -45,13 +45,13 @@ export class GoogleBooks {
     try {
       let data: GoogleBooksVolume;
       if (config.mock.googleBooks) {
-        data = JSON.parse(readFileSync("google-books.json", "utf8"));
+        data = JSON.parse(readFileSync("mocks/google-books.json", "utf8"));
       } else {
         const query = encodeURIComponent(`intitle:"${title}"`);
         const url = `https://www.googleapis.com/books/v1/volumes?q=${query}`;
         const response = await axios.get(url);
         data = response.data;
-        writeFileSync("google-books.json", JSON.stringify(data));
+        writeFileSync("mocks/google-books.json", JSON.stringify(data));
       }
 
       if (!data.items || data.items.length === 0) {

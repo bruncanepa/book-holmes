@@ -1,0 +1,16 @@
+{
+  "name": "browser-worker",
+  "main": "src/lib/puppeteer.ts",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "browser": {
+    "binding": "MYBROWSER"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "BOOK_HOLMES",
+      "preview_id": "a50a93a504874198b78178a3383a6965",
+      "id": "48f2e4b0726e42039a9f2f085744ff73"
+    }
+  ]
+}
