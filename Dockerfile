@@ -19,14 +19,14 @@ RUN cd ../..
 RUN pnpm run build
 
 # Create a non-root user
-RUN groupadd -r bruno && useradd -r -g bruno -G audio,video bruno \
-    && chown -R bruno:bruno /home/bruno \
-    && chown -R bruno:bruno /app
+# RUN groupadd -r bruno && useradd -r -g bruno -G audio,video bruno \
+#     && chown -R bruno:bruno /home/bruno \
+#     && chown -R bruno:bruno /app
 
 ENV NODE_ENV=production
 
 # Switch to non-root user
-USER bruno
+# USER bruno
 
 # Expose port (Heroku will set PORT env variable)
 EXPOSE ${PORT:-3000}
