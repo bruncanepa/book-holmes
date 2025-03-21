@@ -18,6 +18,7 @@ type Config = {
   puppeteer: { headless: boolean };
   web: { url: string };
   cloudflare: { puppeteerUrl: string };
+  websockets: { url: string };
 };
 
 export const loadConfig = (): Config => ({
@@ -47,6 +48,9 @@ export const loadConfig = (): Config => ({
   },
   cloudflare: {
     puppeteerUrl: process.env.CLOUDFLARE_PUPPETEER_URL || "",
+  },
+  websockets: {
+    url: process.env.WEBSOCKETS_URL || "",
   },
 });
 

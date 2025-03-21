@@ -6,6 +6,7 @@ import multer from "multer";
 import { writeFileSync } from "./lib/file";
 import { BookDetectorService } from "./services/book-detector.service";
 import { BookDetectionEvent } from "./dtos/book-detection.dto";
+import axios from "axios";
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -27,43 +28,6 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3002;
 
-// Store active SSE clients
-const clients = new Map<string, { send: (data: string) => void }>();
-
-// SSE endpoint - no auth required
-app.get("/api/events/:id", (req: express.Request, res: express.Response) => {
-  const { id: clientId } = req.params;
-  if (!clientId) return res.status(400).send({ error: "Invalid client ID" });
-
-  // Set headers for SSE
-  res.writeHead(200, {
-    "Content-Type": "text/event-stream",
-    "Cache-Control": "no-cache",
-    Connection: "keep-alive",
-  });
-
-  // Send initial connection message
-  res.write(`data: ${JSON.stringify({ type: "connected" })}\n\n`);
-
-  const client = { send: (data: string) => res.write(`data: ${data}\n\n`) };
-
-  clients.set(clientId, client);
-  console.log(`Client ${clientId} connected`);
-
-  const timeout = 5 * 60 * 1000; // 5 minutes in milliseconds
-  req.setTimeout(timeout, () => {
-    res.write("data: Connection timed out\n\n");
-    res.end(); // Close the connection
-    clients.delete(clientId);
-  });
-
-  // Remove client on connection close
-  req.on("close", () => {
-    clients.delete(clientId);
-    console.log(`Client ${clientId} disconnected`);
-  });
-});
-
 // app.use(
 //   "/api/*",
 //   rateLimit({
@@ -73,15 +37,14 @@ app.get("/api/events/:id", (req: express.Request, res: express.Response) => {
 // );
 
 // Helper function to send updates to all clients
-const sendUpdate = (clientId: string) => (event: BookDetectionEvent) => {
-  const data = JSON.stringify(event);
-  const client = clients.get(clientId);
-  if (client) {
-    console.log(`Sending event to client ${clientId}:`, event);
-    client.send(data);
-    console.log(`Event sent to client ${clientId}`);
-  } else {
-    console.error(`Client ${clientId} not found`);
+const sendUpdate = (clientId: string) => async (event: BookDetectionEvent) => {
+  try {
+    const data = JSON.stringify(event);
+    await axios.post(`${config.websockets.url}/api/events/${clientId}/send`, {
+      data,
+    });
+  } catch (err) {
+    console.error(`Failed to send update to client ${clientId}:`, err);
   }
 };
 

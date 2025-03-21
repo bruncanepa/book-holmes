@@ -11,7 +11,7 @@ export function useBookDetectionEvents(onEvent: EventCallback) {
 
   useEffect(() => {
     const eventSource = new EventSource(
-      `${process.env.NEXT_PUBLIC_API_URL}/events/${clientId}`
+      `${process.env.NEXT_PUBLIC_WEBSOCKETS_URL}/events/${clientId}`
     );
 
     eventSource.onopen = () => {
