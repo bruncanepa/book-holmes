@@ -64,9 +64,11 @@ app.post(
     const { data } = req.body;
     if (!clientId || !data)
       return res.status(400).send({ error: "Invalid client ID or data" });
+    console.log("Sending message to", clientId);
     const client = clients.get(clientId);
     if (!client) return res.status(404).send({ error: "Client not found" });
     client.send(data);
+    console.log("Message sent to", clientId);
     res.status(200).send({ success: true });
   }
 );

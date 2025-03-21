@@ -39,10 +39,12 @@ const PORT = process.env.PORT || 3002;
 // Helper function to send updates to all clients
 const sendUpdate = (clientId: string) => async (event: BookDetectionEvent) => {
   try {
+    console.log("Sending message to", clientId);
     const data = JSON.stringify(event);
     await axios.post(`${config.websockets.url}/api/events/${clientId}/send`, {
       data,
     });
+    console.log("Message sent to", clientId);
   } catch (err) {
     console.error(`Failed to send update to client ${clientId}:`, err);
   }
