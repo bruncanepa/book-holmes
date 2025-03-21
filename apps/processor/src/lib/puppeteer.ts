@@ -1,8 +1,4 @@
 import puppeteer, { Browser, Page } from "@cloudflare/puppeteer";
-import { GoogleGemini } from "./google-gemini";
-import { findBookFirstSectionPrompt } from "../prompts";
-import { GoogleVision } from "./google-vision";
-import config from "../config";
 
 interface Env {
   MYBROWSER: Fetcher;

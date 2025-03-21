@@ -2,11 +2,11 @@
 FROM node:18
 
 # Install required dependencies for Chromium
-RUN apt-get update && apt-get install -y \
-    chromium \
-    fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf \
-    --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/*
+# RUN apt-get update && apt-get install -y \
+#     chromium \
+#     fonts-ipafont-gothic fonts-wqy-zenhei fonts-thai-tlwg fonts-kacst fonts-freefont-ttf \
+#     --no-install-recommends \
+#     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory
 WORKDIR /app
@@ -30,9 +30,12 @@ RUN groupadd -r bruno && useradd -r -g bruno -G audio,video bruno \
     && chown -R bruno:bruno /app
 
 # Set environment variables for Puppeteer
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
-    NODE_ENV=production 
+# ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
+#     PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium \
+#     NODE_ENV=production 
+
+ENV NODE_ENV=production \
+    PUPPETEER_SKIP_DOWNLOAD=true
 
 # Switch to non-root user
 USER bruno
