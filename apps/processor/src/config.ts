@@ -17,9 +17,10 @@ type Config = {
   };
   puppeteer: { headless: boolean };
   web: { url: string };
+  cloudflare: { puppeteerUrl: string };
 };
 
-const config: Config = {
+export const loadConfig = (): Config => ({
   auth: {
     apiKeys: process.env.AUTH_API_KEY?.split(",") || [],
   },
@@ -44,6 +45,9 @@ const config: Config = {
   web: {
     url: process.env.WEB_URL || "",
   },
-};
+  cloudflare: {
+    puppeteerUrl: process.env.CLOUDFLARE_PUPPETEER_URL || "",
+  },
+});
 
-export default config;
+export default loadConfig();

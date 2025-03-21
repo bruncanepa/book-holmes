@@ -1,10 +1,10 @@
-import puppeteer, { Page } from "puppeteer";
+import puppeteer, { Page } from "@cloudflare/puppeteer";
 import { GoogleGemini } from "./google-gemini";
 import { GoogleVision } from "./google-vision";
-import { bookSectionsPrompt as findBookFirstSectionPrompt } from "../prompts";
+import { findBookFirstSectionPrompt as findBookFirstSectionPrompt } from "../prompts";
 import config from "../config";
-import { writeFileSync } from "./file";
 import { readFileSync } from "fs";
+import { writeFileSync, readFileSync } from "./file";
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -29,7 +29,9 @@ export class Scraper {
     return textResult?.description || "";
   }
 
-  private getTOCLinks(page: Page) {
+  private getTOCLinks(
+    page: Page
+  ): { id: number; href: string; text: string }[] {
     return page.evaluate(() => {
       const div = document.getElementById("toc");
       const anchorTags = div?.querySelectorAll("a");
@@ -63,7 +65,7 @@ export class Scraper {
   ): Promise<{ content: string; screenshot: string }> {
     if (config.mock.puppeteer) {
       try {
-        const fileContent = readFileSync(`book-content.json`, "utf-8");
+        const fileContent = readFileSync(`mocks/book-content.json`, "utf-8");
         if (fileContent) {
           const { content, screenshot } = JSON.parse(fileContent);
           return { content, screenshot };
@@ -143,7 +145,7 @@ export class Scraper {
     } finally {
       await browser.close();
       writeFileSync(
-        "book-content.json",
+        "mocks/book-content.json",
         JSON.stringify({ content, screenshot })
       );
       return { content, screenshot };
