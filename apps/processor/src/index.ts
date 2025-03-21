@@ -41,7 +41,7 @@ const sendUpdate = (clientId: string) => async (event: BookDetectionEvent) => {
   try {
     console.log("Sending message to", clientId);
     const data = JSON.stringify(event);
-    await axios.post(`${config.websockets.url}/api/events/${clientId}/send`, {
+    await axios.post(`${config.websockets.url}/events/${clientId}/send`, {
       data,
     });
     console.log("Message sent to", clientId);
@@ -89,7 +89,7 @@ app.post(
         type: result.text ? "completed" : "error",
         data: result,
       };
-      eventHandler({
+      await eventHandler({
         type: result.text ? "completed" : "error",
         data: result,
       });
