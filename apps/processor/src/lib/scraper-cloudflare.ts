@@ -1,18 +1,30 @@
 import axios from "axios";
 import { findBookFirstSectionPrompt } from "../prompts";
 import { GoogleGemini } from "./google-gemini";
-import { GoogleVision } from "./google-vision";
 import config from "../config";
+import { GoogleVision } from "./google-vision";
 
 export class ScraperCloudflare {
+  private gemini: GoogleGemini;
+  private vision: GoogleVision;
+  constructor(private useVision: boolean) {
+    this.gemini = new GoogleGemini();
+    this.vision = new GoogleVision();
+  }
+
   private extractTextFromScreenshot = async (
     screenshot: string
   ): Promise<string> => {
     // Convert base64 to buffer
     const buffer = Buffer.from(screenshot, "base64");
-    const vision = new GoogleVision();
-    const textResult = await vision.detectText("book-screenshot", buffer);
-    return textResult?.description || "";
+    if (this.useVision) {
+      const textResult = await this.vision.detectText(
+        "book-screenshot",
+        buffer
+      );
+      return textResult?.description || "";
+    }
+    return this.gemini.detectBookContent(buffer);
   };
 
   async scrapeBookContent(url: string, pageNumber: "1" | "2") {
@@ -36,7 +48,7 @@ export class ScraperCloudflare {
 
     const prompt = findBookFirstSectionPrompt(links.map((link) => link.text));
 
-    const res = await new GoogleGemini().chatCompletion("book-link", prompt);
+    const res = await this.gemini.chatCompletion("book-link", prompt);
     const index = Number(res.trim().replace(/\D/g, ""));
     if (isNaN(index) || index < 0 || index >= links.length) {
       console.error(JSON.stringify({ res, index, links }));

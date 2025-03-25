@@ -6,7 +6,7 @@ A modern web application that analyzes book cover images to extract information 
 
 - Upload book cover images via drag-and-drop or file selection
 - Real-time analysis feedback using Server-Sent Events (SSE)
-- Automatic book detection using Google Vision AI
+- Automatic book detection using Google Gemini AI
 - Title extraction using OCR
 - Fiction/Non-fiction classification using Google Books API
 - Book content preview using Puppeteer web scraping
@@ -29,9 +29,9 @@ https://github.com/user-attachments/assets/05354567-96ce-4957-8eea-d6f71b85439c
   - *Rationale*: Allows partial results to be useful even if later stages fail
   - *Consequences*: More robust error handling and better user experience
 
-- **Vision AI for Multiple Purposes**
+- **Google Gemini AI for Multiple Purposes**
   - *Context*: Need both object detection and text extraction
-  - *Decision*: Leverage Vision AI for both book detection and OCR
+  - *Decision*: Leverage Google Gemini AI for both book detection and OCR
   - *Rationale*: Unified API for image analysis tasks, consistent quality across features
   - *Consequences*: Efficient API usage and simplified integration
 
@@ -67,7 +67,7 @@ https://github.com/user-attachments/assets/05354567-96ce-4957-8eea-d6f71b85439c
 
 - **Early Book Validation**
   - *Context*: Need to validate if an uploaded image is actually a book before proceeding with analysis
-  - *Decision*: Use Vision AI object detection as first step in the pipeline
+  - *Decision*: Use Google Gemini AI object detection as first step in the pipeline
   - *Rationale*: Prevents unnecessary API calls and processing for non-book images, provides immediate feedback to users
   - *Consequences*: Additional API call but better user experience and resource optimization
 
@@ -79,10 +79,8 @@ https://github.com/user-attachments/assets/05354567-96ce-4957-8eea-d6f71b85439c
 
 ## Current Limitations
 
-- Using free tiers for all third party services. Is possible that we get rate limited.
+- Using free tiers for all third party services (but Claudflare Browser Rendering). Is possible that we get rate limited.
 - Scraping flow is not 100% reliable. We depend on the book having a preview available for public access.
-- Scraping flow needs anti bot tech (e.g. user agent rotation, CAPTCHA solvers, proxy servers)
-- Google Vision free tier doesn't always detect books. Sometimes it thinks it's another object or sometimes it doesn't detecte anything.
 - Implemented architecture not suitable for a real word application. See more in [Real World Scenario](#real-world-scenario).
 
 ## Project Structure
@@ -106,7 +104,7 @@ https://github.com/user-attachments/assets/05354567-96ce-4957-8eea-d6f71b85439c
 
 The backend service handles image analysis and book information retrieval using several external APIs:
 
-1. Google Vision AI for object detection and OCR
+1. Google Gemini AI for object detection and OCR
 2. Google Books API for metadata and classification
 3. Google Gemini AI for enhanced text processing
 4. Puppeteer for web scraping book content
@@ -121,7 +119,7 @@ The backend service handles image analysis and book information retrieval using 
 sequenceDiagram
     participant Client
     participant Backend
-    participant GoogleVision
+    participant GoogleGemini
     participant Puppeteer
 
     participant GoogleGemini
@@ -129,12 +127,12 @@ sequenceDiagram
 
     Client->>Backend: Upload image
     Backend-->>Client: Received
-    Backend->>GoogleVision: Detect objects
-    GoogleVision-->>Backend: Confirm book presence
+    Backend->>GoogleGemini: Detect objects
+    GoogleGemini-->>Backend: Confirm book presence
     Backend->>Client: SSE: book-detected
 
-    Backend->>GoogleVision: Extract text (OCR)
-    GoogleVision-->>Backend: All text found
+    Backend->>GoogleGemini: Extract text (OCR)
+    GoogleGemini-->>Backend: All text found
     Backend->>GoogleGemini: Prompt to get Book title
     GoogleGemini-->>Backend: Book Title
     Backend->>Client: SSE: book-title
@@ -157,8 +155,8 @@ sequenceDiagram
     end
     
     Puppeteer-->>Backend: Send page screenshot
-    Backend->>GoogleVision: Page screenshot
-    GoogleVision-->>Backend: Page content
+    Backend->>GoogleGemini: Page screenshot
+    GoogleGemini-->>Backend: Page content
 
     Backend->>Client: SSE: complete
 </details>
@@ -171,11 +169,11 @@ sequenceDiagram
 The main service that orchestrates the book detection process:
 
 1. **Book Detection**
-   - Uses Google Vision AI to detect if the image contains a book
+   - Uses Google Gemini AI to detect if the image contains a book
    - Confidence threshold based detection
 
 2. **Title Extraction**
-   - OCR using Google Vision AI
+   - OCR using Google Gemini AI
    - Enhanced with Google Gemini AI to get the exact title from the text extracted
 
 3. **Book Classification**
@@ -190,7 +188,7 @@ The main service that orchestrates the book detection process:
    - Navigate to section link using Puppeteer
    - If book is fiction, scroll to page 2
    - Take screenshot using Puppeteer
-   - OCR on page screenshots using Google Vision
+   - OCR on page screenshots using Google Gemini
 
 ### API Endpoints
 
@@ -335,6 +333,57 @@ The application is designed to be deployed on Vercel:
 
 1. Frontend: Deploy the `apps/web` directory
 2. Backend: Deploy the `apps/processor` directory as a serverless function
+
+### Deploying Applications in the `apps` Folder
+
+This project uses a monorepo structure with multiple applications in the `apps` folder:
+
+#### Web Application (`apps/web`)
+- **Platform**: Vercel
+- **Deployment**:
+  ```bash
+  cd apps/web
+  vercel
+  ```
+- **Environment Variables**:
+  - `NEXT_PUBLIC_API_URL`: URL of the deployed processor service
+  - `NEXT_PUBLIC_WEBSOCKETS_URL`: URL of the WebSockets service for real-time updates
+
+#### Processor Service (`apps/processor`)
+- **Platform**: Vercel
+- **Deployment**:
+  ```bash
+  cd apps/processor
+  vercel
+  ```
+- **Environment Variables**:
+  - `GOOGLE_API_KEY`: For Google Books API
+  - `GOOGLE_GEMINI_API_KEY`: For Gemini AI
+  - `AUTH_API_KEY`: For API authentication
+  - `CLOUDFLARE_TOKEN`: For Cloudflare Browser Rendering
+  - `CLOUDFLARE_PUPPETEER_URL`: URL for Puppeteer service
+  - `WEBSOCKETS_URL`: URL for WebSockets service
+
+#### WebSocket Server (`apps/websocket`)
+- **Platform**: AWS EC2 (using Docker)
+- **Reason**: Vercel's serverless functions have a 60-second timeout limitation, which is not suitable for WebSocket connections that need to remain open indefinitely
+- **Deployment**:
+  ```bash
+  cd apps/websocket
+  docker build -t book-detector-websocket .
+  # Deploy to EC2 instance
+  docker run -d -p 3003:3003 -e PORT=3003 book-detector-websocket
+  ```
+- **Environment Variables**:
+  - `PORT`: Port for the WebSocket server (default: 3003)
+
+#### Running Processor Service with Docker
+You can also run the processor service locally using Docker:
+```bash
+cd apps/processor
+docker build -t book-detector-processor .
+docker run -p 3000:3000 -e PORT=3000 -e GOOGLE_API_KEY=your_key -e GOOGLE_GEMINI_API_KEY=your_key -e AUTH_API_KEY=your_key -e WEB_URL=your_web_url book-detector-processor
+```
 
 ## Contributing
 

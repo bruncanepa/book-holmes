@@ -7,25 +7,25 @@ import { GoogleBooks } from "../lib/google-books";
 import { GoogleGemini } from "../lib/google-gemini";
 import { GoogleVision } from "../lib/google-vision";
 import { ScraperCloudflare } from "../lib/scraper-cloudflare";
-import { Scraper } from "../lib/scraper-local";
 import { bookTitlePrompt } from "../prompts";
 
 export class BookDetectorService {
   private vision: GoogleVision;
   private gemini: GoogleGemini;
   private googleBooks: GoogleBooks;
-  private sendUpdate?: (event: BookDetectionEvent) => void;
+  private sendUpdate?: (event: BookDetectionEvent) => Promise<void>;
+  private useVision: boolean = false;
 
-  constructor(sendUpdate?: (event: BookDetectionEvent) => void) {
+  constructor(sendUpdate?: (event: BookDetectionEvent) => Promise<void>) {
     this.vision = new GoogleVision();
     this.gemini = new GoogleGemini();
     this.googleBooks = new GoogleBooks();
     this.sendUpdate = sendUpdate;
   }
 
-  private emitEvent(event: BookDetectionEvent) {
+  private async emitEvent(event: BookDetectionEvent) {
     if (this.sendUpdate) {
-      this.sendUpdate(event);
+      await this.sendUpdate(event);
     } else {
       console.log(
         `EVENT: ${event.type} ${event.data ? JSON.stringify(event.data) : ""}`
@@ -106,15 +106,29 @@ export class BookDetectorService {
   async detectBook(imageBuffer: Buffer): Promise<BookDetectionDto> {
     const data: BookDetectionDto = {};
     try {
-      console.log("Checking if object is book...");
-      await this.checkIfObjectIsBook(imageBuffer);
-      console.log("Object is book");
-      data.isBook = true;
-      this.emitEvent({ type: "book-detected", data: { isBook: true } });
-
-      console.log("Extracting text from image...");
-      data.title = await this.extractTextFromImage(imageBuffer);
-      this.emitEvent({ type: "book-title", data: { title: data.title } });
+      if (this.useVision) {
+        console.log("Checking if object is book...");
+        await this.checkIfObjectIsBook(imageBuffer);
+        console.log("Object is book");
+        data.isBook = true;
+        this.emitEvent({ type: "book-detected", data: { isBook: true } });
+        console.log("Extracting text from image...");
+        data.title = await this.extractTextFromImage(imageBuffer);
+        this.emitEvent({ type: "book-title", data: { title: data.title } });
+      } else {
+        console.log("Checking if object is book...");
+        const { title, author, isBook } =
+          await this.gemini.detectBookTitle(imageBuffer);
+        data.isBook = isBook;
+        if (!isBook) throw new Error("Failed to detect book");
+        console.log(`Object is book: ${title} by ${author}`);
+        if (!title) throw new Error("It's a book, but no text found in image");
+        data.title = title;
+        this.emitEvent({
+          type: "book-title",
+          data: { ...data, title: `${title}${author ? ` by ${author}` : ""}` },
+        });
+      }
 
       console.log("Getting book info...");
       const { isFiction, previewLink, book } = await this.getBookInfo(
@@ -132,13 +146,12 @@ export class BookDetectorService {
       }
       console.log("Getting book content...");
       if (previewLink) {
-        const { content } = await new ScraperCloudflare().scrapeBookContent(
-          previewLink,
-          isFiction ? "2" : "1"
-        );
+        const { content } = await new ScraperCloudflare(
+          this.useVision
+        ).scrapeBookContent(previewLink, isFiction ? "2" : "1");
         data.text = content;
       }
-      console.log("Getting book content...", data.text);
+      console.log("Got book content:", data.text);
       if (!data.text) throw new Error("No book content found");
     } catch (error) {
       console.error("Error processing image:", error);

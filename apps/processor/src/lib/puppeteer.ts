@@ -1,8 +1,4 @@
 import puppeteer, { Browser, Page } from "@cloudflare/puppeteer";
-import { GoogleGemini } from "./google-gemini";
-import { findBookFirstSectionPrompt } from "../prompts";
-import { GoogleVision } from "./google-vision";
-import config from "../config";
 
 interface Env {
   MYBROWSER: Fetcher;
@@ -66,7 +62,9 @@ export default {
       const scrapeStep = decodedUrlObj.searchParams?.get("scrapeStep") as
         | "1"
         | "2";
-      console.log({ scrapeStep, pageNumber, urlReceived, decodedUrl });
+      console.log(
+        JSON.stringify({ scrapeStep, pageNumber, urlReceived, decodedUrl })
+      );
       if (decodedUrl) {
         const urlObj = new URL(decodedUrl);
         urlObj.searchParams.delete("printsec");

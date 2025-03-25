@@ -89,10 +89,6 @@ app.post(
         type: result.text ? "completed" : "error",
         data: result,
       };
-      await eventHandler({
-        type: result.text ? "completed" : "error",
-        data: result,
-      });
       writeFileSync("result.json", JSON.stringify(event));
       res.status(200).json(event);
     } catch (error) {
@@ -105,7 +101,5 @@ app.post(
 );
 
 app.listen(PORT, () => {
-  console.log(
-    `Processor service running on port ${PORT} ${JSON.stringify(config)}`
-  );
+  console.log(`Processor service running on port ${PORT}`);
 });
