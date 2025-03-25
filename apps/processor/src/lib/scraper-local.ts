@@ -104,7 +104,7 @@ export class Scraper {
       const index = Number(res.trim().replace(/\D/g, ""));
       if (isNaN(index) || index < 0 || index >= links.length) {
         console.error(JSON.stringify({ res, index, links }));
-        throw new Error("No first content section found");
+        throw new Error("No free preview for the book found");
       }
 
       const firstSectionLink = links[index]!.href;

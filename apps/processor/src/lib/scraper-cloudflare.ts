@@ -3,6 +3,7 @@ import { findBookFirstSectionPrompt } from "../prompts";
 import { GoogleGemini } from "./google-gemini";
 import config from "../config";
 import { GoogleVision } from "./google-vision";
+import { writeFileSync } from "fs";
 
 export class ScraperCloudflare {
   private gemini: GoogleGemini;
@@ -32,10 +33,15 @@ export class ScraperCloudflare {
     mainUrl.searchParams.delete("printsec");
     const encodedMainUrl = encodeURIComponent(mainUrl.toString());
 
-    const { links, message } = (
+    const {
+      links,
+      message,
+      // screenshot: tocScreenshot,
+    } = (
       await axios.get<{
         links: { id: number; href: string; text: string }[];
         message: string;
+        screenshot: string;
       }>(`${config.cloudflare.puppeteerUrl}/?url=${encodedMainUrl}`)
     ).data;
 
@@ -49,10 +55,19 @@ export class ScraperCloudflare {
     const prompt = findBookFirstSectionPrompt(links.map((link) => link.text));
 
     const res = await this.gemini.chatCompletion("book-link", prompt);
-    const index = Number(res.trim().replace(/\D/g, ""));
+    // Clean the response and ensure we're getting just the number
+    const cleanedResponse = res.trim();
+    // Parse the response as a number, handling both formats: with or without quotes
+    const index = parseInt(cleanedResponse.replace(/[^0-9\-]/g, ""), 10);
+
     if (isNaN(index) || index < 0 || index >= links.length) {
-      console.error(JSON.stringify({ res, index, links }));
-      throw new Error("No first content section found");
+      // writeFileSync("toc-screenshot.png", Buffer.from(tocScreenshot, "base64"));
+
+      console.error(
+        "No first content section found",
+        JSON.stringify({ res, cleanedResponse, index, links })
+      );
+      throw new Error("No free preview for the book found");
     }
 
     const firstSectionLink = links[index]!.href;

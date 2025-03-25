@@ -13,15 +13,14 @@ Rules:
 export const findBookFirstSectionPrompt = (input: string[]) =>
   `Given this array of strings that represent sections of a book, identify which one is most likely to be the first section or chapter of actual book content (not cover, not preface, copyright, etc). 
 Return only the index number of that section. The index start at 0, as it would be an array.
-If none of the sections seem to be actual book content (e.g., they are all front matter like copyright, table of contents, etc.), return -1.
+IMPORTANT: Your response must ONLY contain the index number (e.g., "2", "0"). Do not include any explanation, reasoning, or additional text.
+
 Example 1 input: ["Copyright", "Table of Contents", "Chapter 1: The Beginning", "Chapter 2"]
-Example 1 output: "2"       
+Example 1 output: 2       
 Example 2 input: ["Section 1", "Section 2"]
-Example 2 output: "0"
-Example 3 input: ["Table of contents", "Copy right"]
-Example 3 output: "-1"          
+Example 2 output: 0
 Input: ${input.join(", ")}
-Output (just the number):`;
+Output:`;
 
 export const detectBookTitlePrompt = `act as a librarian. detect if the image contains a book. if it does, return the title and the author. 
 Return your response in valid JSON format with the following schema: { "isBook": boolean, "title": string, "author": string }.
